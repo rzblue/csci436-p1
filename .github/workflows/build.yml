@@ -1,0 +1,30 @@
+name: Build
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            name: Linux
+          - os: macOS-14
+            name: macOS
+
+    name: "Build - ${{ matrix.name }}"
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure
+        run: cmake --preset release
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
