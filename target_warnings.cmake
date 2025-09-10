@@ -6,7 +6,6 @@ macro(add_target_warnings target)
             -Wextra
             -Wno-unused-parameter
             -Wformat=2
-            ${WPILIB_TARGET_WARNINGS}
         )
         if(NOT NO_WERROR)
             set(WARNING_FLAGS ${WARNING_FLAGS} -Werror)

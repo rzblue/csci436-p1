@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.21)
 project(csci436-p1 C CXX)
 
+if(WIN32)
+    message(FATAL_ERROR "Windows targets are not supported")
+endif()
+
+option(NO_WERROR "Disable warnings-as-errors (-Werror)" OFF)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(target_warnings.cmake)
@@ -17,6 +23,7 @@ FetchContent_MakeAvailable(fmt)
 file(GLOB_RECURSE netcopy_src "src/*.cpp" "src/*.c")
 
 add_executable(netcopy ${netcopy_src})
+target_compile_features(netcopy PRIVATE cxx_std_20)
 target_include_directories(netcopy PRIVATE include)
 target_link_libraries(netcopy PRIVATE fmt::fmt)
 add_target_warnings(netcopy)
