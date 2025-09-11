@@ -2,8 +2,16 @@
 #include <iostream>
 #include <vector>
 
+enum CommandType
+{
+  Put,
+  Get,
+  Unknown
+};
+
 // Functions (Perhaps this should be in a header file or something?)
 std::vector<std::string> format_input(std::string inputLine);
+CommandType getCommandType(std::string inputLine);
 
 int main(int argc, char **argv)
 {
@@ -13,10 +21,22 @@ int main(int argc, char **argv)
   while (std::getline(std::cin, line))
   {
     splitInput = format_input(line);
+    // Debug: Print out lines
     for (size_t i = 0; i < splitInput.size(); i++)
     {
-      // Debug: Print out lines
       fmt::println(fmt::runtime("Line[" + std::to_string(i) + "]: " + splitInput[i]));
+    }
+    // Switch for different commands
+    switch (getCommandType(splitInput.at(0)))
+    {
+    case CommandType::Put:
+      fmt::println("Do the required code for put action.");
+      break;
+    case CommandType::Get:
+      fmt::println("Do the required code for get action.");
+      break;
+    default:
+      fmt::println("Unkown Command!");
     }
   }
 }
@@ -42,4 +62,17 @@ std::vector<std::string> format_input(std::string inputLine)
   // Put in the last split line
   splitLines.push_back(currentLine);
   return splitLines;
+}
+
+CommandType getCommandType(std::string inputLine)
+{
+  if (inputLine == "get" || inputLine == "Get")
+  {
+    return CommandType::Get;
+  }
+  if (inputLine == "put" || inputLine == "Put")
+  {
+    return CommandType::Put;
+  }
+  return CommandType::Unknown;
 }
