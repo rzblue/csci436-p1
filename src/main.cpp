@@ -10,8 +10,8 @@ enum CommandType
 };
 
 // Functions (Perhaps this should be in a header file or something?)
-std::vector<std::string> format_input(std::string inputLine);
-CommandType getCommandType(std::string inputLine);
+std::vector<std::string> format_input(std::string_view inputLine);
+CommandType getCommandType(std::string_view inputLine);
 
 int main(int argc, char **argv)
 {
@@ -24,7 +24,7 @@ int main(int argc, char **argv)
     // Debug: Print out words. This can be removed/commented out
     for (size_t i = 0; i < words.size(); i++)
     {
-      fmt::println(fmt::runtime("Word[" + std::to_string(i) + "]: " + words[i]));
+      fmt::println("Word[{}]: {}", i, words[i]);
     }
     // Switch for different commands
     switch (getCommandType(words[0]))
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 }
 
 // This function takes a string, splits into a string vector based on spaces (words)
-std::vector<std::string> format_input(std::string inputLine)
+std::vector<std::string> format_input(std::string_view inputLine)
 {
   std::vector<std::string> words;
   std::string currentWord;
@@ -64,7 +64,7 @@ std::vector<std::string> format_input(std::string inputLine)
   return words;
 }
 
-CommandType getCommandType(std::string inputLine)
+CommandType getCommandType(std::string_view inputLine)
 {
   if (inputLine == "get" || inputLine == "Get")
   {
