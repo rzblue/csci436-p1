@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 
-//Functions (Perhaps this should be in a header file or something?)
+// Functions (Perhaps this should be in a header file or something?)
 std::vector<std::string> format_input(std::string inputLine);
 
 int main(int argc, char **argv)
@@ -15,29 +15,31 @@ int main(int argc, char **argv)
     splitInput = format_input(line);
     for (size_t i = 0; i < splitInput.size(); i++)
     {
-      //Debug: Print out lines
+      // Debug: Print out lines
       fmt::println(fmt::runtime("Line[" + std::to_string(i) + "]: " + splitInput[i]));
     }
   }
 }
 
-//This function takes a string, splits into a string vector based on spaces
+// This function takes a string, splits into a string vector based on spaces
 std::vector<std::string> format_input(std::string inputLine)
 {
   std::vector<std::string> splitLines;
   std::string currentLine;
-  //Check entire line for spaces
+  // Check entire line for spaces
   for (size_t i = 0; i < inputLine.length(); i++)
   {
-    if(inputLine[i] == ' ')
-    { //We hit a space, so input all previous characters into the vector
+    if (inputLine[i] == ' ')
+    { // We hit a space, so input all previous characters into the vector
       splitLines.push_back(currentLine);
       currentLine.clear();
-    }else{ //No space, so add current character to the line
+    }
+    else
+    { // No space, so add current character to the line
       currentLine = currentLine + inputLine[i];
     }
   }
-  //Put in the last split line
+  // Put in the last split line
   splitLines.push_back(currentLine);
   return splitLines;
 }
