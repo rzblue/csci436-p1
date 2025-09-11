@@ -51,12 +51,12 @@ Numeric data is transmitted little endian. File data is transmitted as-is, ident
 #### Header
 All command messages shall consist of an 4 byte header, followed by N bytes of command-specific data.
 ```
-uint8 message ID; // message identifier
+uint8 command_ID; // command identifier
 byte[3] _reserved;
 ```
 ```mermaid
 packet
-0-7: "message ID"
+0-7: "command_ID"
 8-31: "_reserved"
 ```
 
@@ -69,13 +69,12 @@ packet
 | 3  | `ENUMERATE`  |
 
 #### `IDENTIFY`
-Data: implementation defined arbitrary length client identifiers. 
+implementation defined arbitrary length client identifiers. 
 
 Implementations should keep this command short.
 
 #### `GET_FILE`
 
-Data:
 ```
 uint16 path_len // Length of source pathname string in bytes
 char[path_len] pathname // source pathname
@@ -83,7 +82,7 @@ char[path_len] pathname // source pathname
 ```mermaid
 packet
 0-15: "path_len"
-16-64: "pathname (arbitrary length)"
+16-63: "pathname (arbitrary length)"
 ```
 
 #### `PUT_FILE`
@@ -95,7 +94,7 @@ char[path_len] pathname // destination pathname
 ```mermaid
 packet
 0-15: "path_len"
-16-64: "pathname (arbitrary length)"
+16-63: "pathname (arbitrary length)"
 ```
 
 ### File Header
