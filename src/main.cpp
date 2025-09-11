@@ -17,17 +17,17 @@ int main(int argc, char **argv)
 {
   // Client Input Loop
   std::string line;
-  std::vector<std::string> splitInput;
+  std::vector<std::string> words;
   while (std::getline(std::cin, line))
   {
-    splitInput = format_input(line);
-    // Debug: Print out lines
-    for (size_t i = 0; i < splitInput.size(); i++)
+    words = format_input(line);
+    // Debug: Print out words. This can be removed/commented out
+    for (size_t i = 0; i < words.size(); i++)
     {
-      fmt::println(fmt::runtime("Line[" + std::to_string(i) + "]: " + splitInput[i]));
+      fmt::println(fmt::runtime("Word[" + std::to_string(i) + "]: " + words[i]));
     }
     // Switch for different commands
-    switch (getCommandType(splitInput.at(0)))
+    switch (getCommandType(words[0]))
     {
     case CommandType::Put:
       fmt::println("Do the required code for put action.");
@@ -41,27 +41,27 @@ int main(int argc, char **argv)
   }
 }
 
-// This function takes a string, splits into a string vector based on spaces
+// This function takes a string, splits into a string vector based on spaces (words)
 std::vector<std::string> format_input(std::string inputLine)
 {
-  std::vector<std::string> splitLines;
-  std::string currentLine;
+  std::vector<std::string> words;
+  std::string currentWord;
   // Check entire line for spaces
   for (size_t i = 0; i < inputLine.length(); i++)
   {
     if (inputLine[i] == ' ')
     { // We hit a space, so input all previous characters into the vector
-      splitLines.push_back(currentLine);
-      currentLine.clear();
+      words.push_back(currentWord);
+      currentWord.clear();
     }
     else
-    { // No space, so add current character to the line
-      currentLine = currentLine + inputLine[i];
+    { // No space, so add current character to the word
+      currentWord = currentWord + inputLine[i];
     }
   }
-  // Put in the last split line
-  splitLines.push_back(currentLine);
-  return splitLines;
+  // Put in the last word
+  words.push_back(currentWord);
+  return words;
 }
 
 CommandType getCommandType(std::string inputLine)
