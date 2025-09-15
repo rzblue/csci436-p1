@@ -147,8 +147,17 @@ void Server::handlePutFile(int client_fd, const std::vector<char>& file_data,
     std::cout << "PUT_FILE command for path: " << dest_path
               << " with permissions: " << std::oct << permissions
               << " and file size: " << file_data.size() << std::dec << ".\n";
-    // TODO: write file_data to disk at dest_path with permissions
-    //       send ACK to client_fd?
+    
+    // Write file data to disk
+    if (!writeFile(dest_path, file_data)) {
+        std::cerr << "PUT_FILE: Failed to write file to " << dest_path << "\n";
+        Protocol::sendReply(client_fd, Protocol::ReplyStatus::NACK);
+        return;
+    }
+
+    // Send ACK to client on success
+    Protocol::sendReply(client_fd, Protocol::ReplyStatus::ACK);
+    std::cout << "PUT_FILE: Successfully saved file '" << dest_path << "'\n";
 }
 
 
