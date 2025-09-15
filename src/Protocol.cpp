@@ -1,4 +1,6 @@
 #include <cstring>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include "Protocol.hpp"
 
@@ -26,6 +28,11 @@ namespace Protocol {
 
         out_next_offset = needed;
         return true;
+    }
+
+    void sendReply(int socket_fd, ReplyStatus status) {
+        uint8_t value = static_cast<uint8_t>(status);
+        send(socket_fd, &value, sizeof(value), 0);  // 1-byte reply
     }
 
     uint16_t parse_uint16(const char* data) {

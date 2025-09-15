@@ -32,6 +32,14 @@ namespace Protocol {
         static bool parse(const std::vector<char>& buffer, size_t offset, FileHeader& out, size_t& out_next_offset);
     };
 
+    enum class ReplyStatus : uint8_t {
+        ACK   =   0,
+        NACK  =   1,
+        ERROR = 255
+    };
+
+    void sendReply(int socket_fd, ReplyStatus status);
+
     // Integer Parsing / Writing
     uint16_t parse_uint16(const char* data);
     uint64_t parse_uint64(const char* data);
