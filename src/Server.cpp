@@ -1,9 +1,10 @@
 #include <iostream>
 #include <cstring>
-#include <unistd.h>
+#include <fstream>
+#include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
+#include <unistd.h>
 
 #include "Server.hpp"
 
@@ -94,4 +95,34 @@ void Server::receive(int client_fd) {
     } else {
         std::cout << "Client disconnected\n";
     }
+}
+
+bool Server::readFile(std::string_view file_path, std::vector<char>& buffer) {
+    std::ifstream file(std::string(file_path), std::ios::binary | std::ios::ate);
+    if (!file) {
+        return false;
+    }
+
+    std::streamsize size = file.tellg();
+    if (size < 0) {
+        return false;
+    }
+
+    buffer.resize(static_cast<size_t>(size));
+    file.seekg(0, std::ios::beg);
+    if (!file.read(buffer.data(), size)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool Server::writeFile(std::string_view file_path, const std::vector<char>& buffer) {
+    std::ofstream file(std::string(file_path), std::ios::binary);
+    if (!file) {
+        return false;
+    }
+
+    file.write(buffer.data(), buffer.size());
+    return file.good();
 }
