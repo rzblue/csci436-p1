@@ -80,14 +80,50 @@ void Server::start() {
     }
 }
 
+
+// Helper parsing functions assuming big-endian (network byte order)
+uint16_t parse_uint16(const char* data) {
+    return (static_cast<uint8_t>(data[0]) << 8) | static_cast<uint8_t>(data[1]);
+}
+
+uint64_t parse_uint64(const char* data) {
+    uint64_t result = 0;
+    for (int i = 0; i < 8; ++i) {
+        result = (result << 8) | static_cast<uint8_t>(data[i]);
+    }
+    return result;
+}
+
+
+// Placeholder command handlers to implement
+void handleIdentify(const std::vector<char>& data) {
+    std::string id(data.begin(), data.end());
+    std::cout << "IDENTIFY command with id: " << id << ".\n";
+}
+
+void handleGetFile(int client_fd, const std::string& path) {
+    std::cout << "GET_FILE command for path: " << path << ".\n";
+    // TODO: read file, send contents to client_fd
+}
+
+void handlePutFile(int client_fd, const std::vector<char>& file_data,
+                   uint16_t permissions, const std::string& dest_path) {
+
+    std::cout << "PUT_FILE command for path: " << dest_path
+              << " with permissions: " << std::oct << permissions
+              << " and file size: " << file_data.size() << std::dec << ".\n";
+    // TODO: write file_data to disk at dest_path with permissions
+    //       send ACK to client_fd?
+}
+
+
 void Server::receive(int client_fd) {
     const int buffer_size = 1024;
     char buffer[buffer_size];
     ssize_t bytes_received;
 
     while ((bytes_received = recv(client_fd, buffer, buffer_size - 1, 0)) > 0) {
-        buffer[bytes_received] = '\0';  // Ensure String is Null-Terminated
-        std::cout << "Received: " << buffer << std::endl;
+        std::cout << "Received " << bytes_received << " bytes.\n";
     }
 
     if (bytes_received < 0) {
