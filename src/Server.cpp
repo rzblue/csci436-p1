@@ -86,36 +86,63 @@ void Server::start() {
 }
 
 
-// Helper parsing functions assuming big-endian (network byte order)
-uint16_t parse_uint16(const char* data) {
-    return (static_cast<uint8_t>(data[0]) << 8) | static_cast<uint8_t>(data[1]);
-}
-
-
-uint64_t parse_uint64(const char* data) {
-    uint64_t result = 0;
-    for (int i = 0; i < 8; ++i) {
-        result = (result << 8) | static_cast<uint8_t>(data[i]);
-    }
-    return result;
-}
-
-
-// Placeholder command handlers to implement
-void handleIdentify(const std::vector<char>& data) {
+void Server::handleIdentify(const std::vector<char>& data) {
     std::string id(data.begin(), data.end());
     std::cout << "IDENTIFY command with id: " << id << ".\n";
 }
 
 
-void handleGetFile(int client_fd, const std::string& path) {
-    std::cout << "GET_FILE command for path: " << path << ".\n";
-    // TODO: read file, send contents to client_fd
+void Server::handleGetFile(int client_fd, const std::string& path) {
+    std::vector<char> file_data;
+
+    if (!readFile(path, file_data)) {
+        std::cerr << "GET_FILE: Failed to read file: " << path << "\n";
+        Protocol::sendReply(client_fd, Protocol::ReplyStatus::NACK);
+        return;
+    }
+
+    // Send ACK to proceed with file transfer
+    Protocol::sendReply(client_fd, Protocol::ReplyStatus::ACK);
+
+    // Build and send the FileHeader
+    Protocol::FileHeader header;
+    header.permissions = 0644; // TODO: optionally fetch real file mode
+    header.path = path;
+    header.file_size = file_data.size();
+
+    // Serialize FileHeader
+    std::vector<char> header_buffer;
+    header_buffer.resize(2 + 2 + header.path.size() + 8);
+
+    Protocol::write_uint16(&header_buffer[0], header.permissions);
+    Protocol::write_uint16(&header_buffer[2], header.path.size());
+    std::memcpy(&header_buffer[4], header.path.data(), header.path.size());
+    Protocol::write_uint64(&header_buffer[4 + header.path.size()], header.file_size);
+
+    // Send header
+    if (send(client_fd, header_buffer.data(), header_buffer.size(), 0) != static_cast<ssize_t>(header_buffer.size())) {
+        std::cerr << "GET_FILE: Failed to send file header\n";
+        return;
+    }
+
+    // Send file data
+    size_t total_sent = 0;
+    while (total_sent < file_data.size()) {
+        ssize_t sent = send(client_fd, file_data.data() + total_sent,
+                            file_data.size() - total_sent, 0);
+        if (sent <= 0) {
+            std::cerr << "GET_FILE: Failed to send file contents\n";
+            return;
+        }
+        total_sent += sent;
+    }
+
+    std::cout << "GET_FILE: Sent file '" << path << "' (" << total_sent << " bytes)\n";
 }
 
 
-void handlePutFile(int client_fd, const std::vector<char>& file_data,
-                   uint16_t permissions, const std::string& dest_path) {
+void Server::handlePutFile(int client_fd, const std::vector<char>& file_data,
+                           uint16_t permissions, const std::string& dest_path) {
 
     std::cout << "PUT_FILE command for path: " << dest_path
               << " with permissions: " << std::oct << permissions
