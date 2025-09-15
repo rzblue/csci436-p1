@@ -155,6 +155,17 @@ void Server::handlePutFile(int client_fd, const std::vector<char>& file_data,
         return;
     }
 
+    // Set file permission on Linux; ignore on Windows
+    #ifndef _WIN32
+        if (chmod(dest_path.c_str(), permissions) != 0) {
+            std::cerr << "PUT_FILE: Failed to set permissions on " << dest_path << "\n";
+            Protocol::sendReply(client_fd, Protocol::ReplyStatus::NACK);
+            return;
+        }
+    #else
+        std::cout << "PUT_FILE: Skipping chmod on Windows.\n";
+    #endif
+
     // Send ACK to client on success
     Protocol::sendReply(client_fd, Protocol::ReplyStatus::ACK);
     std::cout << "PUT_FILE: Successfully saved file '" << dest_path << "'\n";
