@@ -17,8 +17,8 @@ private:
 
     void receive(int client_fd);
 
-    bool readFile(std::string_view file_path, std::vector<uint8_t>& buffer);
-    bool writeFile(std::string_view file_path, const std::vector<uint8_t>& buffer);
+    bool readFile(std::string_view file_path, std::vector<char>& buffer);
+    bool writeFile(std::string_view file_path, const std::vector<char>& buffer);
 };
 
 #endif // SERVER_HPP
