@@ -9,6 +9,7 @@ public:
     ~Server();
 
     void start();
+    void receive(int client_fd);
 
 private:
     int server_fd;

@@ -72,22 +72,26 @@ void Server::start() {
         std::cout << "Client connected\n";
 
         // Receive Data from the Client and Print It
-        const int buffer_size = 1024;
-        char buffer[buffer_size];
-        ssize_t bytes_received;
-
-        while ((bytes_received = recv(client_fd, buffer, buffer_size - 1, 0)) > 0) {
-            buffer[bytes_received] = '\0';      // Ensure String is Null-Terminated
-            std::cout << "Received: " << buffer << std::endl;
-        }
-
-        if (bytes_received < 0) {
-            std::cerr << "Error: Failed to receive data from client\n";
-        } else {
-            std::cout << "Client disconnected\n";
-        }
+        receive(client_fd);
 
         // Close the Client Socket
         close(client_fd);
+    }
+}
+
+void Server::receive(int client_fd) {
+    const int buffer_size = 1024;
+    char buffer[buffer_size];
+    ssize_t bytes_received;
+
+    while ((bytes_received = recv(client_fd, buffer, buffer_size - 1, 0)) > 0) {
+        buffer[bytes_received] = '\0';  // Ensure String is Null-Terminated
+        std::cout << "Received: " << buffer << std::endl;
+    }
+
+    if (bytes_received < 0) {
+        std::cerr << "Error: Failed to receive data from client\n";
+    } else {
+        std::cout << "Client disconnected\n";
     }
 }
