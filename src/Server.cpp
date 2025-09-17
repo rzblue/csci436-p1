@@ -98,7 +98,7 @@ void Server::handleGetFile(int client_fd, const std::string& file_name) {
     std::vector<char> file_data;
 
     std::filesystem::path current_path = std::filesystem::current_path();
-    std::filesystem::path local_path = current_path / "server_files" / file_name;
+    std::filesystem::path local_path = current_path / file_name;
 
     if (!readFile(local_path.string(), file_data)) {
         std::cerr << "GET_FILE: Failed to read file: " << file_name << "\n";
@@ -147,7 +147,7 @@ void Server::handlePutFile(int client_fd, const std::vector<char>& file_data,
                            uint16_t permissions, const std::string& file_name) {
 
     std::filesystem::path current_path = std::filesystem::current_path();
-    std::filesystem::path local_path = current_path / "server_files" / file_name;
+    std::filesystem::path local_path = current_path / file_name;
 
     std::cout << "PUT_FILE command for path: " << file_name
               << " with permissions: " << std::oct << permissions
@@ -279,17 +279,20 @@ void Server::receive(int client_fd) {
 
 
 
-bool Server::readFile(std::string_view file_path, std::vector<char>& buffer) {
+bool Server::readFile(const std::string& file_path, std::vector<char>& buffer) {
+    // Create File Stream, Open File
     std::ifstream file(std::string(file_path), std::ios::binary | std::ios::ate);
     if (!file) {
         return false;
     }
 
+    // Check Exists
     std::streamsize size = file.tellg();
     if (size < 0) {
         return false;
     }
 
+    // Read File Contents
     buffer.resize(static_cast<size_t>(size));
     file.seekg(0, std::ios::beg);
     if (!file.read(buffer.data(), size)) {
@@ -300,12 +303,14 @@ bool Server::readFile(std::string_view file_path, std::vector<char>& buffer) {
 }
 
 
-bool Server::writeFile(std::string_view file_path, const std::vector<char>& buffer) {
+bool Server::writeFile(const std::string& file_path, const std::vector<char>& buffer) {
+    // Create File Stream, Open File
     std::ofstream file(std::string(file_path), std::ios::binary);
     if (!file) {
         return false;
     }
 
+    // Write File Contents
     file.write(buffer.data(), buffer.size());
     return file.good();
 }

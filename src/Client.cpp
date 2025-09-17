@@ -73,23 +73,25 @@ void Client::start() {
 
 
 void Client::connectToServer() {
+    // Create a TCP Socket
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
         perror("socket");
         exit(EXIT_FAILURE);
     }
 
+    // Prepare the sockaddr_in Structure
     sockaddr_in server_addr{};
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(server_port);
     inet_pton(AF_INET, server_ip.c_str(), &server_addr.sin_addr);
 
+    // Connect to the Server via the Socket
     if (connect(socket_fd, (sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         perror("connect");
         close(socket_fd);
         exit(EXIT_FAILURE);
     }
-
     std::cout << "Connected to server at " << server_ip << ":" << server_port << "\n";
 }
 
@@ -111,7 +113,7 @@ void Client::identify() {
 void Client::getFile(const std::string& file_name) {
     // Construct Absolute File Path
     std::filesystem::path current_path = std::filesystem::current_path();
-    std::filesystem::path local_path = current_path / "client_files" / file_name;
+    std::filesystem::path local_path = current_path / file_name;
 
     // Construct Command Header
     std::vector<char> header;
@@ -170,8 +172,9 @@ void Client::getFile(const std::string& file_name) {
 
 
 void Client::putFile(const std::string& file_name) {
+    // Construct Absolute File Path
     std::filesystem::path current_path = std::filesystem::current_path();
-    std::filesystem::path local_path = current_path / "client_files" / file_name;
+    std::filesystem::path local_path = current_path / file_name;
     
     // Read the Local File
     std::vector<char> file_data;
@@ -249,19 +252,21 @@ Protocol::ReplyStatus Client::receiveReply() {
 }
 
 
-bool Client::readFile(const std::string& filename, std::vector<char>& buffer) {
-    std::ifstream file(filename, std::ios::binary | std::ios::ate);
+bool Client::readFile(const std::string& file_path, std::vector<char>& buffer) {
+    // Create File Stream, Open File
+    std::ifstream file(file_path, std::ios::binary | std::ios::ate);
     if (!file) {
-        std::cerr << "readFile: Failed to open file '" << filename << "'\n";
+        std::cerr << "readFile: Failed to open file '" << file_path << "'\n";
         return false;
     }
 
+    // Check Exists
     std::streamsize size = file.tellg();
     if (size < 0) {
-        std::cerr << "readFile: Invalid file size\n";
         return false;
     }
 
+    // Read File Contents
     buffer.resize(static_cast<size_t>(size));
     file.seekg(0, std::ios::beg);
     if (!file.read(buffer.data(), size)) {
@@ -273,13 +278,15 @@ bool Client::readFile(const std::string& filename, std::vector<char>& buffer) {
 }
 
 
-bool Client::writeFile(const std::string& filename, const std::vector<char>& buffer) {
-    std::ofstream file(filename, std::ios::binary);
+bool Client::writeFile(const std::string& file_path, const std::vector<char>& buffer) {
+    // Create File Stream, Open File
+    std::ofstream file(file_path, std::ios::binary);
     if (!file) {
-        std::cerr << "writeFile: Failed to open file '" << filename << "' for writing\n";
+        std::cerr << "writeFile: Failed to open file '" << file_path << "' for writing\n";
         return false;
     }
 
+    // Write File Contents
     file.write(buffer.data(), buffer.size());
     if (!file.good()) {
         std::cerr << "writeFile: Write failed\n";
