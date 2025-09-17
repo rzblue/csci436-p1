@@ -1,0 +1,36 @@
+Server:
+
+rzblue@Helios:~/csci436-p1/test/server_files$ sha256sum test_server.txt
+b1479aea96e7046b2c1a6346228997f3a65a7cad8297c16f7d59bd8b48b06dc2  test_server.txt
+rzblue@Helios:~/csci436-p1/test/server_files$ ../../build/netcopy server
+Server successfully initialized on port 5000.
+Waiting for incoming connections...
+Client connected
+>>ACK
+GET_FILE: Sent file 'test_server.txt' (19 bytes)
+>>ACK
+PUT_FILE command for path: test_client.txt with permissions: 644 and file size: 23.
+PUT_FILE: Successfully saved file 'test_client.txt'
+Client disconnected
+^C
+rzblue@Helios:~/csci436-p1/test/server_files$ sha256sum test_client.txt
+217875d5257f0c7d2329919c0a57d1ee2d5652031b5aa2e7c356c623b9a16fb1  test_client.txt
+rzblue@Helios:~/csci436-p1/test/server_files$
+
+Client:
+
+rzblue@Helios:~/csci436-p1/test/client_files$ ls
+test_client.txt
+rzblue@Helios:~/csci436-p1/test/client_files$ sha256sum test_client.txt
+217875d5257f0c7d2329919c0a57d1ee2d5652031b5aa2e7c356c623b9a16fb1  test_client.txt
+rzblue@Helios:~/csci436-p1/test/client_files$ ../../build/netcopy client localhost 5000
+Connected to server at localhost:5000
+> get test_server.txt
+Downloaded file to "/home/rzblue/csci436-p1/test/client_files/test_server.txt"
+> put test_client.txt
+Reply Received
+Successfully uploaded file
+> exit
+Disconnected from server.
+rzblue@Helios:~/csci436-p1/test/client_files$ sha256sum test_server.txt
+b1479aea96e7046b2c1a6346228997f3a65a7cad8297c16f7d59bd8b48b06dc2  test_server.txt
