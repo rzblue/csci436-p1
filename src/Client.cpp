@@ -55,10 +55,66 @@ Client::~Client()
         std::cout << "Client shut down." << std::endl;
     }
 }
+void Client::recieveUserInput(std::string_view inputLine)
+{
+    std::vector<std::string> words;
+    words = format_input(inputLine);
+    // Switch for different commands
+    switch (getCommandType(words[0]))
+    {
+    case CommandType::Put:
+        Client::handlePutFile();
+        break;
+    case CommandType::Get:
+        Client::handleGetFile();
+        break;
+    default:
+        std::cout << "Unknown Command." << std::endl;
+    }
+}
+
+// Get what type of command the user entered.
+CommandType Client::getCommandType(std::string_view inputLine)
+{
+    if (inputLine == "get" || inputLine == "Get")
+    {
+        return CommandType::Get;
+    }
+    if (inputLine == "put" || inputLine == "Put")
+    {
+        return CommandType::Put;
+    }
+    return CommandType::Unknown;
+}
+
+// This method takes a string, splits into a string vector based on spaces (words). This is for user input.
+std::vector<std::string> Client::format_input(std::string_view inputLine)
+{
+    std::vector<std::string> words;
+    std::string currentWord;
+    // Check entire line for spaces
+    for (size_t i = 0; i < inputLine.length(); i++)
+    {
+        if (inputLine[i] == ' ')
+        { // We hit a space, so input all previous characters into the vector
+            words.push_back(currentWord);
+            currentWord.clear();
+        }
+        else
+        { // No space, so add current character to the word
+            currentWord = currentWord + inputLine[i];
+        }
+    }
+    // Put in the last word
+    words.push_back(currentWord);
+    return words;
+}
+// What actions the client should do when given a put command
 void Client::handlePutFile()
 {
     std::cout << "TODO: Insert Client Action for putting to server!" << std::endl;
 }
+// What actions the client should do when given a get command
 void Client::handleGetFile()
 {
     std::cout << "TODO: Insert Client Action for getting from server!" << std::endl;
