@@ -17,7 +17,6 @@ namespace Protocol {
 
     bool FileHeader::parse(const std::vector<char>& buffer, size_t offset, FileHeader& out, size_t& out_next_offset) {
         if (buffer.size() < offset + 4) return false;
-        std::cout << "Buffer contains permissions and path_len\n";
 
         out.permissions = parse_uint16(&buffer[offset]);
         uint16_t path_len = parse_uint16(&buffer[offset + 2]);
