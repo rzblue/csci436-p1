@@ -106,15 +106,18 @@ void Client::identify() {
 }
 
 
-void Client::getFile(const std::string& remote_path, const std::string& local_path) {
+void Client::getFile(const std::string& file_name) {
+    std::filesystem::path current_path = std::filesystem::current_path();
+    std::filesystem::path local_path = current_path / "client_files" / file_name;
+
     std::vector<char> payload;
-    size_t path_len = remote_path.size();
+    size_t path_len = file_name.size();
     payload.resize(Protocol::COMMAND_HEADER_SIZE + 2 + path_len);
 
     payload[0] = static_cast<char>(Protocol::CommandID::GET_FILE);
     std::memset(&payload[1], 0, 3);
     Protocol::write_uint16(&payload[4], static_cast<uint16_t>(path_len));
-    std::memcpy(&payload[6], remote_path.data(), path_len);
+    std::memcpy(&payload[6], file_name.data(), path_len);
 
     send(socket_fd, payload.data(), payload.size(), 0);
 
@@ -158,7 +161,10 @@ void Client::getFile(const std::string& remote_path, const std::string& local_pa
 }
 
 
-void Client::putFile(const std::string& local_path, const std::string& remote_path) {
+void Client::putFile(const std::string& file_name) {
+    std::filesystem::path current_path = std::filesystem::current_path();
+    std::filesystem::path local_path = current_path / "client_files" / file_name;
+    
     std::vector<char> file_data;
     if (!readFile(local_path, file_data)) {
         std::cerr << "Failed to read local file: " << local_path << "\n";
@@ -166,12 +172,12 @@ void Client::putFile(const std::string& local_path, const std::string& remote_pa
     }
 
     std::vector<char> cmd_payload;
-    cmd_payload.resize(Protocol::COMMAND_HEADER_SIZE + 2 + remote_path.size());
+    cmd_payload.resize(Protocol::COMMAND_HEADER_SIZE + 2 + file_name.size());
 
     cmd_payload[0] = static_cast<char>(Protocol::CommandID::PUT_FILE);
     std::memset(&cmd_payload[1], 0, 3);
-    Protocol::write_uint16(&cmd_payload[4], static_cast<uint16_t>(remote_path.size()));
-    std::memcpy(&cmd_payload[6], remote_path.data(), remote_path.size());
+    Protocol::write_uint16(&cmd_payload[4], static_cast<uint16_t>(file_name.size()));
+    std::memcpy(&cmd_payload[6], file_name.data(), file_name.size());
 
     send(socket_fd, cmd_payload.data(), cmd_payload.size(), 0);
     
@@ -183,7 +189,7 @@ void Client::putFile(const std::string& local_path, const std::string& remote_pa
     
     Protocol::FileHeader header;
     header.permissions = 0644;
-    header.path = remote_path;
+    header.path = file_name;
     header.file_size = file_data.size();
 
     std::vector<char> header_buffer;

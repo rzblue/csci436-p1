@@ -22,8 +22,8 @@ private:
     void connectToServer();
 
     void identify();
-    void getFile(const std::string& remote_path, const std::string& local_path);
-    void putFile(const std::string& local_path, const std::string& remote_path);
+    void getFile(const std::string& file_name);
+    void putFile(const std::string& file_name);
 
     void sendCommand(Protocol::CommandID command_id, const std::vector<char>& data);
     Protocol::ReplyStatus receiveReply();
