@@ -14,3 +14,15 @@ Build:
 ```
 cmake --build build
 ```
+
+### Running netcopy
+Run Server 
+```
+./netcopy server (Inside build directory)
+```
+
+Run Client
+```
+./netcopy client "host/IP" "port"
+./netcopy client localhost 5000
+```
