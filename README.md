@@ -18,7 +18,8 @@ cmake --build build
 ### Running netcopy
 Run Server 
 ```
-./netcopy server (Inside build directory)
+./netcopy server
+./netcopy server "port"
 ```
 
 Run Client
