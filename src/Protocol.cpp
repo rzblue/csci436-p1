@@ -4,7 +4,7 @@
 #include <sys/types.h>
 
 #include "Protocol.hpp"
-
+#include <iostream>
 
 namespace Protocol {
 
@@ -17,11 +17,12 @@ namespace Protocol {
 
     bool FileHeader::parse(const std::vector<char>& buffer, size_t offset, FileHeader& out, size_t& out_next_offset) {
         if (buffer.size() < offset + 4) return false;
+        std::cout << "Buffer contains permissions and path_len\n";
 
         out.permissions = parse_uint16(&buffer[offset]);
         uint16_t path_len = parse_uint16(&buffer[offset + 2]);
 
-        size_t needed = offset + 4 + path_len + 8; // perms(2) + path_len(2) + path + file_size(8)
+        size_t needed = offset + 2 + 2 + path_len + 8; // perms(2) + path_len(2) + path(path_len) + file_size(8)
         if (buffer.size() < needed) return false;
 
         out.path = std::string(&buffer[offset + 4], path_len);
