@@ -1,23 +1,37 @@
-#include <fmt/core.h>
-#include <Client.hpp>
-#include <Server.hpp>
+#include <iostream>
+#include <cstring>
+#include "Client.hpp"
+#include "Server.hpp"
 
-int main(int argc, char *argv[])
-{
-  // This is for testing the server and client, probably will need to be reworked/removed
-  if (argc == 2)
-  {
-    // Things like the port number and host set here all just for testing as well.
-    if(strcmp(argv[1], "server") == 0)
-    {
-      Server testServer(5000);
-      testServer.start();
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cerr << "Usage:\n";
+        std::cerr << "  " << argv[0] << " server <port>\n";
+        std::cerr << "  " << argv[0] << " client <host> <port>\n";
+        return 1;
     }
-    if(strcmp(argv[1], "client") == 0)
-    {
-      std::string test = "localhost";
-      Client testClient(5000, test.c_str());
-      testClient.sendMessage();
+
+    if (strcmp(argv[1], "server") == 0) {
+        int port = (argc >= 3) ? std::stoi(argv[2]) : 5000;
+        Server server(port);
+        server.start();
     }
-  }
+    else if (strcmp(argv[1], "client") == 0) {
+        if (argc < 4) {
+            std::cerr << "Usage: " << argv[0] << " client <host> <port>\n";
+            return 1;
+        }
+
+        std::string host = argv[2];
+        int port = std::stoi(argv[3]);
+
+        Client client(host, port);
+        client.start();
+    }
+    else {
+        std::cerr << "Unknown mode: " << argv[1] << "\n";
+        return 1;
+    }
+
+    return 0;
 }

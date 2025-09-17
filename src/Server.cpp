@@ -179,6 +179,7 @@ void Server::receive(int client_fd) {
     char temp_buffer[BUFFER_SIZE];
 
     ssize_t bytes_received;
+    bool command_acknowledged = false;
 
     while ((bytes_received = recv(client_fd, temp_buffer, BUFFER_SIZE, 0)) > 0) {
         buffer.insert(buffer.end(), temp_buffer, temp_buffer + bytes_received);
@@ -192,76 +193,74 @@ void Server::receive(int client_fd) {
                 break;
 
             size_t cursor = Protocol::COMMAND_HEADER_SIZE;
+            auto cmd = header.command_id;
 
-            switch (header.command_id) {
-                case Protocol::CommandID::IDENTIFY: {
-                    // Implementation-defined: treat remaining data as identifier string
-                    std::string client_id(buffer.begin() + cursor, buffer.end());
-                    std::cout << "IDENTIFY command: client ID = " << client_id << "\n";
-
-                    buffer.clear();
-                    break;
-                }
-
-                case Protocol::CommandID::GET_FILE: {
-                    if (buffer.size() < cursor + 2) break;
-                    uint16_t path_len = Protocol::parse_uint16(&buffer[cursor]);
-                    cursor += 2;
-
-                    if (buffer.size() < cursor + path_len) break;
-                    std::string path_name(&buffer[cursor], path_len);
-                    cursor += path_len;
-
-                    handleGetFile(client_fd, path_name);
-
-                    buffer.erase(buffer.begin(), buffer.begin() + cursor);
-                    break;
-                }
-
-                case Protocol::CommandID::PUT_FILE: {
-                    // Extract PUT_FILE's initial path_len and path_name
-                    if (buffer.size() < cursor + 2) break;
-                    uint16_t cmd_path_len = Protocol::parse_uint16(&buffer[cursor]);
-                    cursor += 2;
-
-                    if (buffer.size() < cursor + cmd_path_len) break;
-                    std::string cmd_path(&buffer[cursor], cmd_path_len);
-                    cursor += cmd_path_len;
-
-                    // Pparse the FileHeader
-                    Protocol::FileHeader file_header;
-                    size_t next_offset;
-                    if (!Protocol::FileHeader::parse(buffer, cursor, file_header, next_offset))
-                        break;
-
-                    cursor = next_offset;
-
-                    // Read the file data
-                    if (buffer.size() < cursor + file_header.file_size) break;
-
-                    std::vector<char> file_data(buffer.begin() + cursor, buffer.begin() + cursor + file_header.file_size);
-                    cursor += file_header.file_size;
-
-                    handlePutFile(client_fd, file_data, file_header.permissions, file_header.path);
-
-                    buffer.erase(buffer.begin(), buffer.begin() + cursor);
-                    break;
-                }
-
-                case Protocol::CommandID::ENUMERATE: {
-                    std::cout << "ENUMERATE command received (not implemented)\n";
-                    buffer.erase(buffer.begin(), buffer.begin() + Protocol::COMMAND_HEADER_SIZE);
-                    break;
-                }
-
-                default: {
-                    std::cerr << "Unknown command ID: " << static_cast<int>(header.command_id) << "\n";
-                    buffer.clear();
-                    break;
-                }
+            // Send ACK on Command Received
+            if (!command_acknowledged) {
+                std::cout << ">>ACK\n";
+                Protocol::sendReply(client_fd, Protocol::ReplyStatus::ACK);
+                command_acknowledged = true;
             }
 
-            // If buffer is empty or incomplete, stop parsing
+            if (cmd == Protocol::CommandID::IDENTIFY) {
+                std::string client_id(buffer.begin() + cursor, buffer.end());
+                std::cout << "IDENTIFY command: client ID = " << client_id << "\n";
+                buffer.clear();
+                command_acknowledged = false;
+            }
+
+            else if (cmd == Protocol::CommandID::GET_FILE) {
+                if (buffer.size() < cursor + 2) break;
+                uint16_t path_len = Protocol::parse_uint16(&buffer[cursor]);
+                cursor += 2;
+
+                if (buffer.size() < cursor + path_len) break;
+                std::string path_name(&buffer[cursor], path_len);
+                cursor += path_len;
+
+                handleGetFile(client_fd, path_name);
+                buffer.erase(buffer.begin(), buffer.begin() + cursor);
+                command_acknowledged = false;
+            }
+
+            else if (cmd == Protocol::CommandID::PUT_FILE) {
+                if (buffer.size() < cursor + 2) break;
+                uint16_t cmd_path_len = Protocol::parse_uint16(&buffer[cursor]);
+                cursor += 2;
+
+                if (buffer.size() < cursor + cmd_path_len) break;
+                std::string cmd_path(&buffer[cursor], cmd_path_len);
+                cursor += cmd_path_len;
+
+                Protocol::FileHeader file_header;
+                size_t next_offset;
+                if (!Protocol::FileHeader::parse(buffer, cursor, file_header, next_offset))
+                    break;
+
+                cursor = next_offset;
+
+                if (buffer.size() < cursor + file_header.file_size) break;
+
+                std::vector<char> file_data(buffer.begin() + cursor, buffer.begin() + cursor + file_header.file_size);
+                cursor += file_header.file_size;
+
+                handlePutFile(client_fd, file_data, file_header.permissions, file_header.path);
+                buffer.erase(buffer.begin(), buffer.begin() + cursor);
+                command_acknowledged = false;
+            }
+
+            else if (cmd == Protocol::CommandID::ENUMERATE) {
+                std::cout << "ENUMERATE command received (not implemented)\n";
+                buffer.erase(buffer.begin(), buffer.begin() + Protocol::COMMAND_HEADER_SIZE);
+                command_acknowledged = false;
+            }
+
+            else {
+                std::cerr << "Unknown command ID: " << static_cast<int>(cmd) << "\n";
+                buffer.clear();
+                command_acknowledged = false;
+            }
+
             if (buffer.empty() || buffer.size() < Protocol::COMMAND_HEADER_SIZE)
                 break;
         }
@@ -273,6 +272,7 @@ void Server::receive(int client_fd) {
         std::cout << "Client disconnected\n";
     }
 }
+
 
 
 bool Server::readFile(std::string_view file_path, std::vector<char>& buffer) {

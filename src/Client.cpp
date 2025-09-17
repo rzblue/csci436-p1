@@ -1,69 +1,265 @@
-#include <iostream>
+#include <algorithm>
+#include <cctype>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h>
+#include <arpa/inet.h>
+#include <sstream>
+#include <string>
+#include <sys/socket.h>
+#include <sys/stat.h>
 
 #include "Client.hpp"
+#include "Protocol.hpp"
 
-// Client Constructor
-Client::Client(int serverPort, const char *remoteHostName)
-{
-    // Init
-    this->port = serverPort;
-    this->remoteHostName = remoteHostName;
-    this->clientSocket = -1;
-    struct hostent *resolvedHost;
 
-    // Create TCP Socket
-    this->clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (this->clientSocket < 0)
-    {
-        std::cerr << "Error: Failed to create socket" << std::endl;
+Client::Client(const std::string& server_ip, int server_port)
+    : server_ip(server_ip), server_port(server_port), socket_fd(-1) {}
+
+
+Client::~Client() {
+    if (socket_fd != -1) {
+        close(socket_fd);
+        std::cout << "Disconnected from server.\n";
+    }
+}
+
+void Client::start() {
+    connectToServer();
+
+    // Main Command-Handling Loop
+    std::string input;
+    while (true) {
+        std::cout << "> ";
+        std::getline(std::cin, input);
+        std::transform(input.begin(), input.end(), input.begin(),
+                       [](unsigned char c){ return std::tolower(c); });
+        
+        // Exit Case
+        if (input == "exit") break;
+
+        std::istringstream iss(input);
+        std::string command, filename;
+
+        if (command == "IDENTIFY") {
+            identify();
+        }
+        else if (command == "PUT_FILE") {
+            if (filename.empty()) {
+                std::cout << "Error: Missing file name.\n";
+            }
+        }
+        else if (command == "GET_FILE") {
+            if (filename.empty()) {
+                std::cout << "Error: Missing file name.\n";
+            } else {
+                getFile(filename);
+            }
+        }
+        else {
+            std::cout << "Unknown command.\n";
+        }
+
+        iss >> command;
+        std::getline(iss, arugment);
+    }
+}
+
+
+void Client::connectToServer() {
+    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_fd < 0) {
+        perror("socket");
         exit(EXIT_FAILURE);
     }
-    // Get remote host name
-    resolvedHost = gethostbyname(remoteHostName);
-    if (!resolvedHost)
-    {
-        std::cerr << "Error: Could not find host " << remoteHostName << std::endl;
+
+    sockaddr_in server_addr{};
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(server_port);
+    inet_pton(AF_INET, server_ip.c_str(), &server_addr.sin_addr);
+
+    if (connect(socket_fd, (sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        perror("connect");
+        close(socket_fd);
         exit(EXIT_FAILURE);
     }
 
-    // Address
-    sockaddr_in remoteAddress;
-    std::memset(&remoteAddress, 0, sizeof(remoteAddress)); // Sets everything to 0
-    remoteAddress.sin_family = AF_INET;
-    std::memcpy(&remoteAddress.sin_addr, resolvedHost->h_addr, resolvedHost->h_length); // Copy the resolvede host address into remoteAddress
-    remoteAddress.sin_port = htons(serverPort);
-
-    // Open connection
-    if (connect(this->clientSocket, (struct sockaddr *)&remoteAddress, sizeof(remoteAddress)) < 0)
-    {
-        std::cerr << "Error: Failed to connect to server" << std::endl;
-    }
+    std::cout << "Connected to server at " << server_ip << ":" << server_port << "\n";
 }
 
-Client::~Client()
-{
-    // Close the Client Socket when the Object Goes out of Scope
-    if (this->clientSocket != -1)
-    {
-        close(this->clientSocket);
-        std::cout << "Client shut down." << std::endl;
+
+void Client::identify(const std::string& client_id) {
+    std::vector<char> payload;
+    payload.resize(Protocol::COMMAND_HEADER_SIZE + client_id.size());
+
+    payload[0] = static_cast<char>(Protocol::CommandID::IDENTIFY);
+    std::memset(&payload[1], 0, 3);
+    std::memcpy(&payload[4], client_id.data(), client_id.size());
+
+    send(socket_fd, payload.data(), payload.size(), 0);
+    std::cout << "Sent IDENTIFY: " << client_id << "\n";
+}
+
+
+void Client::getFile(const std::string& remote_path, const std::string& local_path) {
+    std::vector<char> payload;
+    size_t path_len = remote_path.size();
+    payload.resize(Protocol::COMMAND_HEADER_SIZE + 2 + path_len);
+
+    payload[0] = static_cast<char>(Protocol::CommandID::GET_FILE);
+    std::memset(&payload[1], 0, 3);
+    Protocol::write_uint16(&payload[4], static_cast<uint16_t>(path_len));
+    std::memcpy(&payload[6], remote_path.data(), path_len);
+
+    send(socket_fd, payload.data(), payload.size(), 0);
+
+    if (receiveReply() != Protocol::ReplyStatus::ACK) {
+        std::cerr << "Server rejected GET_FILE request\n";
+        return;
+    }
+
+    char header_buf[4096];
+    ssize_t bytes_received = recv(socket_fd, header_buf, sizeof(header_buf), 0);
+    if (bytes_received <= 0) {
+        std::cerr << "Failed to receive file header\n";
+        return;
+    }
+
+    std::vector<char> buffer(header_buf, header_buf + bytes_received);
+    Protocol::FileHeader file_header;
+    size_t next_offset;
+    if (!Protocol::FileHeader::parse(buffer, 0, file_header, next_offset)) {
+        std::cerr << "Invalid file header received\n";
+        return;
+    }
+
+    std::vector<char> file_data;
+    //size_t received = buffer.size() - next_offset;
+    file_data.insert(file_data.end(), buffer.begin() + next_offset, buffer.end());
+
+    while (file_data.size() < file_header.file_size) {
+        char temp[4096];
+        ssize_t n = recv(socket_fd, temp, sizeof(temp), 0);
+        if (n <= 0) break;
+        file_data.insert(file_data.end(), temp, temp + n);
+    }
+
+    if (!writeFile(local_path, file_data)) {
+        std::cerr << "Failed to save file to " << local_path << "\n";
+        return;
+    }
+
+    std::cout << "Downloaded file to " << local_path << "\n";
+}
+
+
+void Client::putFile(const std::string& local_path, const std::string& remote_path) {
+    std::vector<char> file_data;
+    if (!readFile(local_path, file_data)) {
+        std::cerr << "Failed to read local file: " << local_path << "\n";
+        return;
+    }
+
+    std::vector<char> cmd_payload;
+    cmd_payload.resize(Protocol::COMMAND_HEADER_SIZE + 2 + remote_path.size());
+
+    cmd_payload[0] = static_cast<char>(Protocol::CommandID::PUT_FILE);
+    std::memset(&cmd_payload[1], 0, 3);
+    Protocol::write_uint16(&cmd_payload[4], static_cast<uint16_t>(remote_path.size()));
+    std::memcpy(&cmd_payload[6], remote_path.data(), remote_path.size());
+
+    send(socket_fd, cmd_payload.data(), cmd_payload.size(), 0);
+    
+    if (receiveReply() != Protocol::ReplyStatus::ACK) {
+        std::cerr << "Server rejected PUT_FILE command\n";
+        return;
+    }
+    std::cout << "Reply Received\n";
+    
+    Protocol::FileHeader header;
+    header.permissions = 0644;
+    header.path = remote_path;
+    header.file_size = file_data.size();
+
+    std::vector<char> header_buffer;
+    header_buffer.resize(2 + 2 + header.path.size() + 8);
+    Protocol::write_uint16(&header_buffer[0], header.permissions);
+    Protocol::write_uint16(&header_buffer[2], header.path.size());
+    std::memcpy(&header_buffer[4], header.path.data(), header.path.size());
+    Protocol::write_uint64(&header_buffer[4 + header.path.size()], header.file_size);
+
+    send(socket_fd, header_buffer.data(), header_buffer.size(), 0);
+
+    size_t total_sent = 0;
+    while (total_sent < file_data.size()) {
+        ssize_t sent = send(socket_fd, file_data.data() + total_sent,
+                            file_data.size() - total_sent, 0);
+        if (sent <= 0) {
+            std::cerr << "Failed to send file data\n";
+            return;
+        }
+        total_sent += sent;
+    }
+
+    if (receiveReply() == Protocol::ReplyStatus::ACK) {
+        std::cout << "Successfully uploaded file\n";
+    } else {
+        std::cerr << "Server failed to receive file\n";
     }
 }
-// TODO: This can probably be removed eventually, this is just for testing
-void Client::sendMessage()
-{
-    char messageBuffer[256];
-    int length;
-    while (fgets(messageBuffer, sizeof(messageBuffer), stdin))
-    {
-        messageBuffer[255] = '\0';
-        length = strlen(messageBuffer) + 1;
-        send(clientSocket, messageBuffer, length, 0);
+
+
+Protocol::ReplyStatus Client::receiveReply() {
+    uint8_t reply;
+    ssize_t n = recv(socket_fd, &reply, sizeof(reply), 0);
+    if (n <= 0) {
+        std::cerr << "Failed to receive reply\n";
+        return Protocol::ReplyStatus::ERROR;
     }
+    return static_cast<Protocol::ReplyStatus>(reply);
 }
+
+
+bool Client::readFile(const std::string& filename, std::vector<char>& buffer) {
+    std::ifstream file(filename, std::ios::binary | std::ios::ate);
+    if (!file) {
+        std::cerr << "readFile: Failed to open file '" << filename << "'\n";
+        return false;
+    }
+
+    std::streamsize size = file.tellg();
+    if (size < 0) {
+        std::cerr << "readFile: Invalid file size\n";
+        return false;
+    }
+
+    buffer.resize(static_cast<size_t>(size));
+    file.seekg(0, std::ios::beg);
+    if (!file.read(buffer.data(), size)) {
+        std::cerr << "readFile: Failed to read file contents\n";
+        return false;
+    }
+
+    return true;
+}
+
+
+bool Client::writeFile(const std::string& filename, const std::vector<char>& buffer) {
+    std::ofstream file(filename, std::ios::binary);
+    if (!file) {
+        std::cerr << "writeFile: Failed to open file '" << filename << "' for writing\n";
+        return false;
+    }
+
+    file.write(buffer.data(), buffer.size());
+    if (!file.good()) {
+        std::cerr << "writeFile: Write failed\n";
+        return false;
+    }
+
+    return true;
+}
+
