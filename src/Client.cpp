@@ -191,11 +191,13 @@ void Client::putFile(const std::string& file_name) {
     }
     std::cout << "Reply Received\n";
     
+    // Construct FileHeader
     Protocol::FileHeader header;
     header.permissions = 0644;
     header.path = file_name;
     header.file_size = file_data.size();
 
+    // Serialize FileHeader
     std::vector<char> header_buffer;
     header_buffer.resize(2 + 2 + header.path.size() + 8);
     Protocol::write_uint16(&header_buffer[0], header.permissions);
@@ -203,8 +205,10 @@ void Client::putFile(const std::string& file_name) {
     std::memcpy(&header_buffer[4], header.path.data(), header.path.size());
     Protocol::write_uint64(&header_buffer[4 + header.path.size()], header.file_size);
 
+    // Send FileHeader
     send(socket_fd, header_buffer.data(), header_buffer.size(), 0);
 
+    // Send File Data
     size_t total_sent = 0;
     while (total_sent < file_data.size()) {
         ssize_t sent = send(socket_fd, file_data.data() + total_sent,
@@ -216,6 +220,7 @@ void Client::putFile(const std::string& file_name) {
         total_sent += sent;
     }
 
+    // Receive Server Reply
     if (receiveReply() == Protocol::ReplyStatus::ACK) {
         std::cout << "Successfully uploaded file\n";
     } else {
