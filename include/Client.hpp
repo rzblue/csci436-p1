@@ -7,6 +7,8 @@ public:
     ~Client();
 
     void sendMessage();
+    void handleGetFile();
+    void handlePutFile();
 
 private:
     int clientSocket;

@@ -55,6 +55,15 @@ Client::~Client()
         std::cout << "Client shut down." << std::endl;
     }
 }
+void Client::handlePutFile()
+{
+    std::cout << "TODO: Insert Client Action for putting to server!" << std::endl;
+}
+void Client::handleGetFile()
+{
+    std::cout << "TODO: Insert Client Action for getting from server!" << std::endl;
+}
+
 // TODO: This can probably be removed eventually, this is just for testing
 void Client::sendMessage()
 {

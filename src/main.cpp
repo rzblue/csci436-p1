@@ -21,46 +21,37 @@ int main(int argc, char *argv[])
   if (argc == 2)
   {
     // Things like the port number and host set here all just for testing as well.
-    if(strcmp(argv[1], "server") == 0)
+    if (strcmp(argv[1], "server") == 0)
     {
       Server testServer(5000);
       testServer.start();
     }
-    if(strcmp(argv[1], "client") == 0)
+    if (strcmp(argv[1], "client") == 0)
     {
       std::string test = "localhost";
       Client testClient(5000, test.c_str());
-      testClient.sendMessage();
+      // Client Input Loop
+      std::string line;
+      std::vector<std::string> words;
+      while (std::getline(std::cin, line))
+      {
+        words = format_input(line);
+        // Switch for different commands
+        switch (getCommandType(words[0]))
+        {
+        case CommandType::Put:
+          testClient.handlePutFile();
+          break;
+        case CommandType::Get:
+          testClient.handleGetFile();
+          break;
+        default:
+          fmt::println("Unkown Command!");
+        }
+      }
     }
   }
-
-/*int main(int argc, char **argv)
-{
-  // Client Input Loop
-  std::string line;
-  std::vector<std::string> words;
-  while (std::getline(std::cin, line))
-  {
-    words = format_input(line);
-    // Debug: Print out words. This can be removed/commented out
-    for (size_t i = 0; i < words.size(); i++)
-    {
-      fmt::println("Word[{}]: {}", i, words[i]);
-    }
-    // Switch for different commands
-    switch (getCommandType(words[0]))
-    {
-    case CommandType::Put:
-      fmt::println("Do the required code for put action.");
-      break;
-    case CommandType::Get:
-      fmt::println("Do the required code for get action.");
-      break;
-    default:
-      fmt::println("Unkown Command!");
-    }
-  }
-}*/
+}
 
 // This function takes a string, splits into a string vector based on spaces (words)
 std::vector<std::string> format_input(std::string_view inputLine)
