@@ -46,6 +46,7 @@ void Client::start() {
         iss >> command;
         iss >> filename;
 
+        // Handle User Commands
         if (command == "identify") {
             identify();
         }
@@ -95,12 +96,15 @@ void Client::connectToServer() {
 
 
 void Client::identify() {
-    std::vector<char> payload;
-    payload.resize(Protocol::COMMAND_HEADER_SIZE);
+    // Construct Command Header
+    std::vector<char> header;
+    header.resize(Protocol::COMMAND_HEADER_SIZE);
 
-    payload[0] = static_cast<char>(Protocol::CommandID::IDENTIFY);
+    // Serialize Command Header
+    header[0] = static_cast<char>(Protocol::CommandID::IDENTIFY);
 
-    send(socket_fd, payload.data(), payload.size(), 0);
+    // Send Command Header
+    send(socket_fd, header.data(), header.size(), 0);
     std::cout << "Sent IDENTIFY\n";
 }
 
@@ -130,6 +134,7 @@ void Client::getFile(const std::string& file_name) {
         return;
     }
 
+    // Receive Header Buffer
     char header_buf[4096];
     ssize_t bytes_received = recv(socket_fd, header_buf, sizeof(header_buf), 0);
     if (bytes_received <= 0) {
@@ -137,6 +142,7 @@ void Client::getFile(const std::string& file_name) {
         return;
     }
 
+    // Parse Header Buffer
     std::vector<char> buffer(header_buf, header_buf + bytes_received);
     Protocol::FileHeader file_header;
     size_t next_offset;
@@ -145,10 +151,9 @@ void Client::getFile(const std::string& file_name) {
         return;
     }
 
+    // Receive File Data
     std::vector<char> file_data;
-    //size_t received = buffer.size() - next_offset;
     file_data.insert(file_data.end(), buffer.begin() + next_offset, buffer.end());
-
     while (file_data.size() < file_header.file_size) {
         char temp[4096];
         ssize_t n = recv(socket_fd, temp, sizeof(temp), 0);
@@ -156,11 +161,11 @@ void Client::getFile(const std::string& file_name) {
         file_data.insert(file_data.end(), temp, temp + n);
     }
 
+    // Write File to Disk
     if (!writeFile(local_path, file_data)) {
         std::cerr << "Failed to save file to " << local_path << "\n";
         return;
     }
-
     std::cout << "Downloaded file to " << local_path << "\n";
 }
 
