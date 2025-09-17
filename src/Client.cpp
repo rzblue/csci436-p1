@@ -115,13 +115,16 @@ void Client::getFile(const std::string& file_name) {
     size_t path_len = file_name.size();
     header.resize(Protocol::COMMAND_HEADER_SIZE + 2 + path_len);
 
+    // Serialize Command Header
     header[0] = static_cast<char>(Protocol::CommandID::GET_FILE);
     std::memset(&header[1], 0, 3);
     Protocol::write_uint16(&header[4], static_cast<uint16_t>(path_len));
     std::memcpy(&header[6], file_name.data(), path_len);
 
+    // Send Command Header
     send(socket_fd, header.data(), header.size(), 0);
 
+    // Receive Server Reply (ACK, NACK, ERROR)
     if (receiveReply() != Protocol::ReplyStatus::ACK) {
         std::cerr << "Server rejected GET_FILE request\n";
         return;
