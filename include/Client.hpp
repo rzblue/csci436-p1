@@ -21,7 +21,7 @@ private:
 
     void connectToServer();
 
-    void identify(const std::string& client_id);
+    void identify();
     void getFile(const std::string& remote_path, const std::string& local_path);
     void putFile(const std::string& local_path, const std::string& remote_path);
 

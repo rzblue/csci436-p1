@@ -51,11 +51,15 @@ void Client::start() {
             if (filename.empty()) {
                 std::cout << "Error: Missing file name.\n";
             }
+            else {
+                putFile(filename);
+            }
         }
         else if (command == "GET_FILE") {
             if (filename.empty()) {
                 std::cout << "Error: Missing file name.\n";
-            } else {
+            }
+            else {
                 getFile(filename);
             }
         }
@@ -64,7 +68,7 @@ void Client::start() {
         }
 
         iss >> command;
-        std::getline(iss, arugment);
+        std::getline(iss, filename);
     }
 }
 
@@ -91,16 +95,14 @@ void Client::connectToServer() {
 }
 
 
-void Client::identify(const std::string& client_id) {
+void Client::identify() {
     std::vector<char> payload;
-    payload.resize(Protocol::COMMAND_HEADER_SIZE + client_id.size());
+    payload.resize(Protocol::COMMAND_HEADER_SIZE);
 
     payload[0] = static_cast<char>(Protocol::CommandID::IDENTIFY);
-    std::memset(&payload[1], 0, 3);
-    std::memcpy(&payload[4], client_id.data(), client_id.size());
 
     send(socket_fd, payload.data(), payload.size(), 0);
-    std::cout << "Sent IDENTIFY: " << client_id << "\n";
+    std::cout << "Sent IDENTIFY\n";
 }
 
 
