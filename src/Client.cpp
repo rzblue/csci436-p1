@@ -106,19 +106,21 @@ void Client::identify() {
 
 
 void Client::getFile(const std::string& file_name) {
+    // Construct Absolute File Path
     std::filesystem::path current_path = std::filesystem::current_path();
     std::filesystem::path local_path = current_path / "client_files" / file_name;
 
-    std::vector<char> payload;
+    // Construct Command Header
+    std::vector<char> header;
     size_t path_len = file_name.size();
-    payload.resize(Protocol::COMMAND_HEADER_SIZE + 2 + path_len);
+    header.resize(Protocol::COMMAND_HEADER_SIZE + 2 + path_len);
 
-    payload[0] = static_cast<char>(Protocol::CommandID::GET_FILE);
-    std::memset(&payload[1], 0, 3);
-    Protocol::write_uint16(&payload[4], static_cast<uint16_t>(path_len));
-    std::memcpy(&payload[6], file_name.data(), path_len);
+    header[0] = static_cast<char>(Protocol::CommandID::GET_FILE);
+    std::memset(&header[1], 0, 3);
+    Protocol::write_uint16(&header[4], static_cast<uint16_t>(path_len));
+    std::memcpy(&header[6], file_name.data(), path_len);
 
-    send(socket_fd, payload.data(), payload.size(), 0);
+    send(socket_fd, header.data(), header.size(), 0);
 
     if (receiveReply() != Protocol::ReplyStatus::ACK) {
         std::cerr << "Server rejected GET_FILE request\n";
