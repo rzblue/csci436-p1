@@ -33,40 +33,39 @@ void Client::start() {
     // Main Command-Handling Loop
     std::string input;
     while (true) {
+        // Prompt User, Read Input
         std::cout << "> ";
         std::getline(std::cin, input);
-        std::transform(input.begin(), input.end(), input.begin(),
-                       [](unsigned char c){ return std::tolower(c); });
         
         // Exit Case
         if (input == "exit") break;
 
+        // Parse Command and Filename
         std::istringstream iss(input);
         std::string command, filename;
         iss >> command;
         iss >> filename;
+        
+        // Convert Command to Lower Case
+        std::transform(command.begin(), command.end(), command.begin(),
+                       [](unsigned char c){ return std::tolower(c); });
 
         // Handle User Commands
         if (command == "identify") {
             identify();
-        }
-        else if (command == "put") {
+        } else if (command == "put") {
             if (filename.empty()) {
                 std::cout << "Error: Missing file name.\n";
-            }
-            else {
+            } else {
                 putFile(filename);
             }
-        }
-        else if (command == "get") {
+        } else if (command == "get") {
             if (filename.empty()) {
                 std::cout << "Error: Missing file name.\n";
-            }
-            else {
+            } else {
                 getFile(filename);
             }
-        }
-        else {
+        } else {
             std::cout << "Unknown command.\n";
         }
     }
