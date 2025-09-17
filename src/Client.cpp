@@ -164,22 +164,27 @@ void Client::putFile(const std::string& file_name) {
     std::filesystem::path current_path = std::filesystem::current_path();
     std::filesystem::path local_path = current_path / "client_files" / file_name;
     
+    // Read the Local File
     std::vector<char> file_data;
     if (!readFile(local_path, file_data)) {
         std::cerr << "Failed to read local file: " << local_path << "\n";
         return;
     }
 
+    // Construct the Payload
     std::vector<char> cmd_payload;
     cmd_payload.resize(Protocol::COMMAND_HEADER_SIZE + 2 + file_name.size());
 
+    // Serialize the Payload
     cmd_payload[0] = static_cast<char>(Protocol::CommandID::PUT_FILE);
     std::memset(&cmd_payload[1], 0, 3);
     Protocol::write_uint16(&cmd_payload[4], static_cast<uint16_t>(file_name.size()));
     std::memcpy(&cmd_payload[6], file_name.data(), file_name.size());
 
+    // Send the Payload
     send(socket_fd, cmd_payload.data(), cmd_payload.size(), 0);
     
+    // Receive Server Reply (ACK, NACK, ERROR)
     if (receiveReply() != Protocol::ReplyStatus::ACK) {
         std::cerr << "Server rejected PUT_FILE command\n";
         return;
