@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <netinet/in.h>
 #include <string>
@@ -93,11 +94,14 @@ void Server::handleIdentify(const std::vector<char>& data) {
 }
 
 
-void Server::handleGetFile(int client_fd, const std::string& path) {
+void Server::handleGetFile(int client_fd, const std::string& file_name) {
     std::vector<char> file_data;
 
-    if (!readFile(path, file_data)) {
-        std::cerr << "GET_FILE: Failed to read file: " << path << "\n";
+    std::filesystem::path current_path = std::filesystem::current_path();
+    std::filesystem::path local_path = current_path / "server_files" / file_name;
+
+    if (!readFile(local_path.string(), file_data)) {
+        std::cerr << "GET_FILE: Failed to read file: " << file_name << "\n";
         Protocol::sendReply(client_fd, Protocol::ReplyStatus::NACK);
         return;
     }
@@ -108,7 +112,7 @@ void Server::handleGetFile(int client_fd, const std::string& path) {
     // Build and send the FileHeader
     Protocol::FileHeader header;
     header.permissions = 0644; // TODO: optionally fetch real file mode
-    header.path = path;
+    header.path = local_path;
     header.file_size = file_data.size();
 
     // Serialize FileHeader
@@ -138,28 +142,31 @@ void Server::handleGetFile(int client_fd, const std::string& path) {
         total_sent += sent;
     }
 
-    std::cout << "GET_FILE: Sent file '" << path << "' (" << total_sent << " bytes)\n";
+    std::cout << "GET_FILE: Sent file '" << file_name << "' (" << total_sent << " bytes)\n";
 }
 
 
 void Server::handlePutFile(int client_fd, const std::vector<char>& file_data,
-                           uint16_t permissions, const std::string& dest_path) {
+                           uint16_t permissions, const std::string& file_name) {
 
-    std::cout << "PUT_FILE command for path: " << dest_path
+    std::filesystem::path current_path = std::filesystem::current_path();
+    std::filesystem::path local_path = current_path / "server_files" / file_name;
+
+    std::cout << "PUT_FILE command for path: " << file_name
               << " with permissions: " << std::oct << permissions
               << " and file size: " << file_data.size() << std::dec << ".\n";
     
     // Write file data to disk
-    if (!writeFile(dest_path, file_data)) {
-        std::cerr << "PUT_FILE: Failed to write file to " << dest_path << "\n";
+    if (!writeFile(local_path.string(), file_data)) {
+        std::cerr << "PUT_FILE: Failed to write file to " << local_path << "\n";
         Protocol::sendReply(client_fd, Protocol::ReplyStatus::NACK);
         return;
     }
 
     // Set file permission on Linux; ignore on Windows
     #ifndef _WIN32
-        if (chmod(dest_path.c_str(), permissions) != 0) {
-            std::cerr << "PUT_FILE: Failed to set permissions on " << dest_path << "\n";
+        if (chmod(local_path.c_str(), permissions) != 0) {
+            std::cerr << "PUT_FILE: Failed to set permissions on " << file_name << "\n";
             Protocol::sendReply(client_fd, Protocol::ReplyStatus::NACK);
             return;
         }
@@ -169,7 +176,7 @@ void Server::handlePutFile(int client_fd, const std::vector<char>& file_data,
 
     // Send ACK to client on success
     Protocol::sendReply(client_fd, Protocol::ReplyStatus::ACK);
-    std::cout << "PUT_FILE: Successfully saved file '" << dest_path << "'\n";
+    std::cout << "PUT_FILE: Successfully saved file '" << file_name << "'\n";
 }
 
 
