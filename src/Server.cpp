@@ -106,9 +106,6 @@ void Server::handleGetFile(int client_fd, const std::string& file_name) {
         return;
     }
 
-    // Send ACK to proceed with file transfer
-    Protocol::sendReply(client_fd, Protocol::ReplyStatus::ACK);
-
     // Build and send the FileHeader
     Protocol::FileHeader header;
     header.permissions = 0644; // TODO: optionally fetch real file mode
