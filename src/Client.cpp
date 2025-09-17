@@ -44,12 +44,12 @@ void Client::start() {
         std::istringstream iss(input);
         std::string command, filename;
         iss >> command;
-        std::getline(iss, filename);
+        iss >> filename;
 
         if (command == "identify") {
             identify();
         }
-        else if (command == "put_file") {
+        else if (command == "put") {
             if (filename.empty()) {
                 std::cout << "Error: Missing file name.\n";
             }
@@ -57,7 +57,7 @@ void Client::start() {
                 putFile(filename);
             }
         }
-        else if (command == "get_file") {
+        else if (command == "get") {
             if (filename.empty()) {
                 std::cout << "Error: Missing file name.\n";
             }
