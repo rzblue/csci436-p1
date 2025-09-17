@@ -1,4 +1,6 @@
 #include <fmt/core.h>
+#include <iostream>
+#include <vector>
 #include <Client.hpp>
 #include <Server.hpp>
 
@@ -8,16 +10,21 @@ int main(int argc, char *argv[])
   if (argc == 2)
   {
     // Things like the port number and host set here all just for testing as well.
-    if(strcmp(argv[1], "server") == 0)
+    if (strcmp(argv[1], "server") == 0)
     {
       Server testServer(5000);
       testServer.start();
     }
-    if(strcmp(argv[1], "client") == 0)
+    if (strcmp(argv[1], "client") == 0)
     {
       std::string test = "localhost";
       Client testClient(5000, test.c_str());
-      testClient.sendMessage();
+      // Client Input Loop
+      std::string line;
+      while (std::getline(std::cin, line))
+      {
+        testClient.recieveUserInput(line);
+      }
     }
   }
 }

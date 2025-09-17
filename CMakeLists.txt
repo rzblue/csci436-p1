@@ -23,6 +23,16 @@ FetchContent_MakeAvailable(fmt)
 file(GLOB_RECURSE netcopy_src "src/*.cpp" "src/*.c")
 
 add_executable(netcopy ${netcopy_src})
+add_custom_target(run_client
+    COMMAND netcopy client
+    DEPENDS netcopy
+    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+)
+add_custom_target(run_server
+    COMMAND netcopy server
+    DEPENDS netcopy
+    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+)
 target_compile_features(netcopy PRIVATE cxx_std_20)
 target_include_directories(netcopy PRIVATE include)
 target_link_libraries(netcopy PRIVATE fmt::fmt)
