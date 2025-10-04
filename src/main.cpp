@@ -1,9 +1,10 @@
 #include <iostream>
 #include <cstring>
-#include "Client.hpp"
+#include "FileClient.hpp"
 #include "Server.hpp"
 
 int main(int argc, char* argv[]) {
+    // Basic Argument Parsing
     if (argc < 2) {
         std::cerr << "Usage:\n";
         std::cerr << "  " << argv[0] << " server <port>\n";
@@ -11,11 +12,15 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Determine Mode: Server or Client
+    // Server Mode
     if (strcmp(argv[1], "server") == 0) {
         int port = (argc >= 3) ? std::stoi(argv[2]) : 5000;
         Server server(port);
         server.start();
     }
+    
+    // Client Mode
     else if (strcmp(argv[1], "client") == 0) {
         if (argc < 4) {
             std::cerr << "Usage: " << argv[0] << " client <host> <port>\n";
@@ -31,9 +36,11 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        Client client(host, port);
+        FileClient client(host, port);
         client.start();
     }
+
+    // Invalid Mode
     else {
         std::cerr << "Unknown mode: " << argv[1] << "\n";
         return 1;
