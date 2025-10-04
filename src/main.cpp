@@ -23,7 +23,13 @@ int main(int argc, char* argv[]) {
         }
 
         std::string host = argv[2];
-        int port = std::stoi(argv[3]);
+        int port;
+        try {
+            port = std::stoi(argv[3]);
+        } catch (const std::invalid_argument&) {
+            std::cerr << "Invalid port number: " << argv[3] << "\n";
+            return 1;
+        }
 
         Client client(host, port);
         client.start();
