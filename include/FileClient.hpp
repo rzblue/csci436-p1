@@ -13,7 +13,8 @@ public:
     FileClient(const std::string& server_ip, int server_port);
     ~FileClient() = default;
 
-    void start();
+protected:
+    void makeRequest() override;
 
 private:
     void identify();

@@ -14,12 +14,7 @@
 FileClient::FileClient(const std::string& server_ip, int server_port)
     : BaseClient(server_ip, server_port) {}
 
-void FileClient::start() {
-    if (!connectToServer()) {
-        std::cerr << "Failed to connect to server.\n";
-        return;
-    }
-
+void FileClient::makeRequest() {
     // Main Command-Handling Loop
     std::string input;
     while (true) {
