@@ -10,13 +10,15 @@ public:
     BaseClient(const std::string& ip, int port);
     ~BaseClient();
 
-    bool connectToServer();
+    void start();
     void disconnect();
 
 protected:
     int socket_fd;
     std::string server_ip;
     int server_port;
+
+    virtual void makeRequest() = 0;
 };
 
 #endif // BASE_CLIENT_HPP

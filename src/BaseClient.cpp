@@ -13,12 +13,12 @@ BaseClient::~BaseClient() {
     disconnect();
 }
 
-bool BaseClient::connectToServer() {
+void BaseClient::start() {
     // Create a TCP Socket
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
         std::cerr << "Error: Failed to create socket\n";
-        return false;
+        return;
     }
 
     // Prepare the sockaddr_in Structure
@@ -29,18 +29,19 @@ bool BaseClient::connectToServer() {
     // Convert IP Address from Text to Binary Form
     if (inet_pton(AF_INET, server_ip.c_str(), &server_addr.sin_addr) <= 0) {
         std::cerr << "Error: Invalid server IP address\n";
-        return false;
+        return;
     }
 
     // Connect to the Server via the Socket
     if (connect(socket_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         std::cerr << "Error: Failed to connect to server\n";
         disconnect();
-        return false;
+        return;
     }
     std::cout << "Connected to server at " << server_ip << ":" << server_port << "\n";
 
-    return true;
+    // Make the Request (Implemented by Derived Class)
+    makeRequest();
 }
 
 void BaseClient::disconnect() {
