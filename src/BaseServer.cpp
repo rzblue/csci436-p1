@@ -12,7 +12,7 @@ BaseServer::BaseServer(int port)
 BaseServer::~BaseServer() {
     if (socket_fd != -1) {
         close(socket_fd);
-        std::cout << "Socket closed.\n";
+        std::cout << "Server shut down.\n";
     }
 }
 
@@ -62,7 +62,7 @@ bool BaseServer::start() {
         std::cout << "Client connected.\n";
 
         handleRequest(client_fd);
-        
+
         close(client_fd);
         std::cout << "Client disconnected.\n";
     }
