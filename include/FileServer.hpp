@@ -17,6 +17,9 @@ protected:
     void handleRequest(int client_fd) override;
 
 private:
+    bool parseCommand(int client_fd, Protocol::CommandHeader& command_header, std::vector<char>& buffer);
+    void acknowledgeCommand(int client_fd);
+
     void handleIdentify(const std::vector<char>& data);
     void handleGetFile(int client_fd, const std::string& path);
     void handlePutFile(int client_fd, const std::vector<char>& file_data,
