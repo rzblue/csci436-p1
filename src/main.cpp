@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstring>
 #include "FileClient.hpp"
-#include "Server.hpp"
+#include "FileServer.hpp"
 
 int main(int argc, char* argv[]) {
     // Basic Argument Parsing
@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
     // Server Mode
     if (strcmp(argv[1], "server") == 0) {
         int port = (argc >= 3) ? std::stoi(argv[2]) : 5000;
-        Server server(port);
+        FileServer server(port);
         server.start();
     }
     
