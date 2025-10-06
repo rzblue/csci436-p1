@@ -5,7 +5,7 @@
 class BaseServer{
 public:
     BaseServer(int port);
-    BaseServer();
+    ~BaseServer();
 
     bool start();
 
