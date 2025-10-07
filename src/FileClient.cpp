@@ -14,6 +14,12 @@
 FileClient::FileClient(const std::string& server_ip, int server_port)
     : BaseClient(server_ip, server_port) {}
 
+    
+FileClient::FileClient(const std::string& dest_ip, int dest_port,
+                       const std::string& proxy_ip, int proxy_port)
+    : BaseClient(dest_ip, dest_port, proxy_ip, proxy_port) {}
+
+
 void FileClient::makeRequest() {
     // Main Command-Handling Loop
     std::string input;
