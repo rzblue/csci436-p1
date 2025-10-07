@@ -2,6 +2,8 @@
 #include <cstring>
 #include "FileClient.hpp"
 #include "FileServer.hpp"
+#include "ProxyServer.hpp"
+
 
 int main(int argc, char* argv[]) {
     // Basic Argument Parsing
@@ -38,6 +40,13 @@ int main(int argc, char* argv[]) {
 
         FileClient client(host, port);
         client.start();
+    }
+
+    // Proxy Mode
+    else if (strcmp(argv[1], "proxy") == 0) {
+        int port = (argc >= 3) ? std::stoi(argv[2]) : 5000;
+        ProxyServer server(port);
+        server.start();
     }
 
     // Invalid Mode
