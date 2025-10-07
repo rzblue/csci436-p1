@@ -11,6 +11,8 @@
 class FileClient : public BaseClient {
 public:
     FileClient(const std::string& server_ip, int server_port);
+    FileClient(const std::string& dest_ip, int dest_port,
+               const std::string& proxy_ip, int proxy_port);
     ~FileClient() = default;
 
 protected:
