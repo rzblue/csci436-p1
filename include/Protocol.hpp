@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <arpa/inet.h>
 
 
 namespace Protocol {
@@ -13,6 +14,11 @@ namespace Protocol {
         GET_FILE  = 1,
         PUT_FILE  = 2,
         ENUMERATE = 3
+    };
+
+    struct ProxyHeader {
+        in_addr dest_addr;   // Destination IP Address, 4 Bytes (IPv4)
+        uint16_t dest_port;  // Destination Port, 2 Bytes
     };
 
     constexpr size_t COMMAND_HEADER_SIZE = 4;

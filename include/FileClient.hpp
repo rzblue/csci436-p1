@@ -1,26 +1,24 @@
-#ifndef CLIENT_HPP
-#define CLIENT_HPP
+#ifndef FILE_CLIENT_HPP
+#define FILE_CLIENT_HPP
+
+#include "Protocol.hpp"
+#include "BaseClient.hpp"
 
 #include <string>
 #include <vector>
 
-#include "Protocol.hpp"
 
-
-class Client {
+class FileClient : public BaseClient {
 public:
-    Client(const std::string& server_ip, int server_port);
-    ~Client();
+    FileClient(const std::string& server_ip, int server_port);
+    FileClient(const std::string& dest_ip, int dest_port,
+               const std::string& proxy_ip, int proxy_port);
+    ~FileClient() = default;
 
-    void start();
+protected:
+    void makeRequest() override;
 
 private:
-    std::string server_ip;
-    int server_port;
-    int socket_fd;
-
-    void connectToServer();
-
     void identify();
     void getFile(const std::string& file_name);
     void putFile(const std::string& file_name);
@@ -28,8 +26,9 @@ private:
     void sendCommand(Protocol::CommandID command_id, const std::vector<char>& data);
     Protocol::ReplyStatus receiveReply();
 
+    // File helpers
     bool readFile(const std::string& path, std::vector<char>& buffer);
     bool writeFile(const std::string& path, const std::vector<char>& buffer);
 };
 
-#endif // CLIENT_HPP
+#endif // FILE_CLIENT_HPP

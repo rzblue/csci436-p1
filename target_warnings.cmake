@@ -15,10 +15,8 @@ macro(add_target_warnings target)
     endif()
 
     # Compress debug info with GCC
-    if(
-        (${CMAKE_BUILD_TYPE} STREQUAL "Debug" OR ${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
-        AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU"
-    )
+    if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+        AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         target_compile_options(${target} PRIVATE -gz=zlib)
     endif()
 endmacro()
