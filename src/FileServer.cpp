@@ -77,7 +77,7 @@ bool FileServer::parseCommand(int client_fd, Protocol::CommandHeader& command_he
         cursor += path_len;
 
         // Acknowledge the command
-        acknowledgeCommand(client_fd);
+        //acknowledgeCommand(client_fd); //Moved this to handleGetFile, only send the ACK if the file exists
 
         // Handle GET_FILE Command
         handleGetFile(client_fd, path_name);
@@ -147,8 +147,10 @@ void FileServer::handleGetFile(int client_fd, const std::string& file_name) {
     // Read file from disk
     if (!readFile(local_path.string(), file_data)) {
         std::cerr << "GET_FILE: Failed to read file: " << file_name << "\n";
-        Protocol::sendReply(client_fd, Protocol::ReplyStatus::NACK);
+        Protocol::sendReply(client_fd, Protocol::ReplyStatus::INVALID); //This file does not exist, send INVALID
         return;
+    }else{ //We found the file, send ACK
+        Protocol::sendReply(client_fd, Protocol::ReplyStatus::ACK);
     }
 
     // Build and send the FileHeader

@@ -31,6 +31,12 @@ void FileClient::makeRequest() {
         // Exit Case
         if (input == "exit") break;
 
+        // Clear terminal
+        if (input == "clear") {
+            std::cout << "\033c" << std::endl;
+            continue;
+        }
+
         // Parse Command and Filename
         std::istringstream iss(input);
         std::string command, filename;
@@ -87,8 +93,12 @@ void FileClient::getFile(const std::string& file_name) {
     // Send Command Header
     send(socket_fd, header.data(), header.size(), 0);
 
-    // Receive Server Reply (ACK, NACK, ERROR)
-    if (receiveReply() != Protocol::ReplyStatus::ACK) {
+    Protocol::ReplyStatus reply = receiveReply(); //Get a reply from the server with the status of our request
+    if (reply == Protocol::ReplyStatus::INVALID) { //The requested file does not exist on server
+        std::cerr << "Error: File does not exist on server:" << file_name << "\n";
+        return;
+    }
+    if (reply != Protocol::ReplyStatus::ACK) { //Some other issue occured
         std::cerr << "Server rejected GET_FILE request\n";
         return;
     }

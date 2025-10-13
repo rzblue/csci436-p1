@@ -26,10 +26,29 @@ Run Server
 Run Client
 ```
 ./netcopy client "host/IP" "port"
-./netcopy client localhost 5000
+./netcopy client 127.0.0.1 5000
 ```
 Run Proxy
 ```
 ./netcopy proxy "port"
 ./netcopy proxy 5000
 ```
+
+### Client Commands
+Clear Terminal
+```
+clear
+```
+Exit Terminal
+```
+exit
+```
+Get File From Server
+```
+get test.txt
+get "fileName"
+```
+Put File Onto Server
+```
+put test.txt
+get "test.txt"
