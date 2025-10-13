@@ -41,6 +41,7 @@ namespace Protocol {
     enum class ReplyStatus : uint8_t {
         ACK   =   0,
         NACK  =   1,
+        INVALID = 254, //Use for when the user tries to do something invalid, like GET_FILE on a non-existent file
         ERROR = 255
     };
 

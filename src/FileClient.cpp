@@ -25,11 +25,17 @@ void FileClient::makeRequest() {
     std::string input;
     while (true) {
         // Prompt User, Read Input
-        std::cout << "> ";
+        std::cout << PRINT_PROMPT;
         std::getline(std::cin, input);
 
         // Exit Case
         if (input == "exit") break;
+
+        // Clear terminal
+        if (input == "clear") {
+            std::cout << "\033c" << std::endl;
+            continue;
+        }
 
         // Parse Command and Filename
         std::istringstream iss(input);
@@ -87,9 +93,14 @@ void FileClient::getFile(const std::string& file_name) {
     // Send Command Header
     send(socket_fd, header.data(), header.size(), 0);
 
-    // Receive Server Reply (ACK, NACK, ERROR)
-    if (receiveReply() != Protocol::ReplyStatus::ACK) {
-        std::cerr << "Server rejected GET_FILE request\n";
+    Protocol::ReplyStatus reply = receiveReply(); //Get a reply from the server with the status of our request
+    if (reply == Protocol::ReplyStatus::INVALID) { //The requested file does not exist on server
+        //std::cerr << "Error: File does not exist on server:" << file_name << "\n";
+        std::cerr << PRINT_ERROR << "File does not exist on server:" << file_name << "\n";
+        return;
+    }
+    if (reply != Protocol::ReplyStatus::ACK) { //Some other issue occured
+        std::cerr << PRINT_ERROR <<  "Server rejected GET_FILE request\n";
         return;
     }
 
@@ -97,7 +108,7 @@ void FileClient::getFile(const std::string& file_name) {
     char header_buf[4096];
     ssize_t bytes_received = recv(socket_fd, header_buf, sizeof(header_buf), 0);
     if (bytes_received <= 0) {
-        std::cerr << "Failed to receive file header\n";
+        std::cerr << PRINT_ERROR << "Failed to receive file header\n";
         return;
     }
 
@@ -106,7 +117,7 @@ void FileClient::getFile(const std::string& file_name) {
     Protocol::FileHeader file_header;
     size_t next_offset;
     if (!Protocol::FileHeader::parse(buffer, 0, file_header, next_offset)) {
-        std::cerr << "Invalid file header received\n";
+        std::cerr << PRINT_ERROR << "Invalid file header received\n";
         return;
     }
 
@@ -130,10 +141,10 @@ void FileClient::getFile(const std::string& file_name) {
 
     // Write to Local File
     if (!writeFile(local_path, file_data)) {
-        std::cerr << "Failed to save file to " << local_path << "\n";
+        std::cerr << PRINT_ERROR << "Failed to save file to " << local_path << "\n";
         return;
     }
-    std::cout << "Downloaded file to " << local_path << "\n";
+    std::cout << PRINT_SUCCESSES << "Downloaded file to " << local_path << "\n";
 }
 
 void FileClient::putFile(const std::string& file_name) {
@@ -143,7 +154,7 @@ void FileClient::putFile(const std::string& file_name) {
     // Read the Local File
     std::vector<char> file_data;
     if (!readFile(local_path, file_data)) {
-        std::cerr << "Failed to read local file: " << local_path << "\n";
+        std::cerr << PRINT_ERROR << "Failed to read local file: " << local_path << "\n";
         return;
     }
 
@@ -159,7 +170,7 @@ void FileClient::putFile(const std::string& file_name) {
 
     // Receive Server Reply (ACK, NACK, ERROR)
     if (receiveReply() != Protocol::ReplyStatus::ACK) {
-        std::cerr << "Server rejected PUT_FILE command\n";
+        std::cerr << PRINT_ERROR << "Server rejected PUT_FILE command\n";
         return;
     }
 
@@ -177,9 +188,9 @@ void FileClient::putFile(const std::string& file_name) {
 
     // Receive Final Server Reply
     if (receiveReply() == Protocol::ReplyStatus::ACK) {
-        std::cout << "Successfully uploaded file\n";
+        std::cout << PRINT_SUCCESSES << "Successfully uploaded file\n";
     } else {
-        std::cerr << "Server failed to receive file\n";
+        std::cerr << PRINT_ERROR << "Server failed to receive file\n";
     }
 }
 
@@ -187,7 +198,7 @@ Protocol::ReplyStatus FileClient::receiveReply() {
     uint8_t reply;
     ssize_t n = recv(socket_fd, &reply, sizeof(reply), 0);
     if (n <= 0) {
-        std::cerr << "Failed to receive reply\n";
+        std::cerr << PRINT_ERROR << "Failed to receive reply\n";
         return Protocol::ReplyStatus::ERROR;
     }
     return static_cast<Protocol::ReplyStatus>(reply);

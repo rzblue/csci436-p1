@@ -7,6 +7,14 @@
 #include <string>
 #include <vector>
 
+// ANSI Color Codes for Terminal Output
+#define RESET "\033[0m"
+#define RED "\033[31m"     /* Red */
+#define GREEN "\033[32m"   /* Green */
+#define MAGENTA "\033[35m" /* Magenta */
+#define PRINT_ERROR RED << "[ERROR]" << RESET << " "
+#define PRINT_SUCCESSES GREEN << "[SUCCESSES]" << RESET << " "
+#define PRINT_PROMPT MAGENTA << ">" << RESET << " "
 
 class FileClient : public BaseClient {
 public:
