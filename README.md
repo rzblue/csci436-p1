@@ -16,6 +16,7 @@ cmake --build build
 ```
 
 ### Running netcopy
+<br>Note: If no port is specified, a default port of 5000 is used.
 Run Server 
 ```
 ./netcopy server
@@ -26,4 +27,9 @@ Run Client
 ```
 ./netcopy client "host/IP" "port"
 ./netcopy client localhost 5000
+```
+Run Proxy
+```
+./netcopy proxy "port"
+./netcopy proxy 5000
 ```
