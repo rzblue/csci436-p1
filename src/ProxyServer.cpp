@@ -8,6 +8,7 @@
 #include "ProxyServer.hpp"
 #include "Protocol.hpp"
 
+#include "Logger.hpp"
 
 void ProxyServer::handleRequest(int client_fd) {
     // Read Proxy Header
