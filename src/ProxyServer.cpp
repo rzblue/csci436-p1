@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/select.h>
+#include <algorithm>          
+#include <chrono>  
 
 #include "ProxyServer.hpp"
 #include "Protocol.hpp"
@@ -47,6 +49,20 @@ void ProxyServer::handleRequest(int client_fd) {
     }
     std::cout << "[ProxyServer] Connected to destination.\n";
 
+    //Create a per-connection logger using the client_fd as ID
+    Logger logger(std::to_string(client_fd));
+    bool logged_request_line = false; //log first request once
+    bool logged_status_line  = false; //log first status once
+
+    // --- Session bookkeeping -------------------------------------------------
+    std::size_t bytes_up = 0;                         // client -> server
+    std::size_t bytes_down = 0;                       // server -> client
+    auto t_start = std::chrono::steady_clock::now();  // session start time
+
+    // Log a connection-open event so each file shows the target right away
+    logger.logRequest(std::string("CONNECT ") + dest_ip + ":" + std::to_string(dest_port));
+    // ------------------------------------------------------------------------
+
     // Relay Loop
     fd_set fds;  // Declare File Descriptor Set
     char relay_buffer[4096];
@@ -68,7 +84,21 @@ void ProxyServer::handleRequest(int client_fd) {
             ssize_t n = recv(client_fd, relay_buffer, sizeof(relay_buffer), 0);
             std::cout << "[ProxyServer] Relayed " << n << " bytes from client to server.\n";
             if (n <= 0) break;
-            send(server_fd, relay_buffer, n, 0);
+
+            //Log the first request line once
+            if (!logged_request_line) {                                      
+                std::string chunk(relay_buffer, relay_buffer + n);           
+                size_t eol = chunk.find("\r\n");                             
+                std::string first_line = (eol == std::string::npos)         
+                    ? chunk : chunk.substr(0, eol);                          
+                if (first_line.size() > 512) first_line.resize(512);         
+                logger.logRequest(first_line);                               
+                logged_request_line = true;                                  
+            }
+
+            ssize_t s = send(server_fd, relay_buffer, n, 0);
+            if (s < 0) break;
+            bytes_up += static_cast<std::size_t>(s);   // Count bytes up
         }
 
         // Server → Client
@@ -78,9 +108,33 @@ void ProxyServer::handleRequest(int client_fd) {
             ssize_t n = recv(server_fd, relay_buffer, sizeof(relay_buffer), 0);
             std::cout << "[ProxyServer] Relayed " << n << " bytes from server to client.\n";
             if (n <= 0) break;
-            send(client_fd, relay_buffer, n, 0);
+            
+            //Log the first status line once
+            if (!logged_status_line) {                                      
+                std::string chunk(relay_buffer, relay_buffer + n);           
+                size_t eol = chunk.find("\r\n");                          
+                std::string first_line = (eol == std::string::npos)         
+                    ? chunk : chunk.substr(0, eol);                         
+                if (first_line.size() > 512) first_line.resize(512);        
+                logger.logResponse(first_line);                              
+                logged_status_line = true;                               
+            } 
+
+            ssize_t s = send(client_fd, relay_buffer, n, 0);
+            if (s < 0) break;
+            bytes_down += static_cast<std::size_t>(s); // Count bytes down
         }
     }
+
+    // --- Session summary on close -------------------------------------------
+    auto t_end = std::chrono::steady_clock::now();                         
+    std::chrono::duration<double> dt = t_end - t_start;                    
+    char summary[128];                                                     
+    std::snprintf(summary, sizeof(summary),                                
+                  "SUMMARY up=%zub down=%zub dur=%.2fs",                   
+                  bytes_up, bytes_down, dt.count());                       
+    logger.logResponse(summary);                                           
+    // -----------------------------------------------------------------------
 
     close(server_fd);
     std::cout << "[ProxyServer] Connection closed.\n";
