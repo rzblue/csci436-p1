@@ -7,11 +7,54 @@
 #include <fstream>      
 #include <mutex> 
 
+#include <string>       
 
 // Serialize concurrent file writes across all Logger instances
 static std::mutex g_log_file_mutex;
 
-// Create a new logger object for  the given client
+// Sanitize a log line (trim CRLF, keep printable ASCII/whitespace, redact Basic auth, cap length)
+static std::string sanitize_http_line(std::string s) {                    
+    // Trim at first CRLF                                                 
+    if (auto p = s.find("\r\n"); p != std::string::npos)                  
+        s.erase(p);                                                       
+
+    // Keep only printable ASCII and tab                                  
+    std::string out;                                                      
+    out.reserve(s.size());                                                
+    for (unsigned char c : s) {                                           
+        if ((c >= 32 && c <= 126) || c == '\t')                           
+            out.push_back(static_cast<char>(c));                          
+        // drop other control/binary                                      
+    }                                                                     
+
+    // Redact Basic auth if present                                        
+    auto redact = [&](const char* key){                                  
+        std::string k = key;                                             
+        auto pos = out.find(k);                                           
+        if (pos != std::string::npos) {                                   
+            auto val_start = pos + k.size();                              
+            // skip whitespace                                            
+            while (val_start < out.size() &&                              
+                   (out[val_start] == ' ' || out[val_start] == '\t'))     
+                ++val_start;                                              
+            // redact the rest of line                                     
+            out.replace(val_start, out.size() - val_start, "[REDACTED]"); 
+        }                                                                 
+    };                                                                    
+    redact("Authorization: Basic");                                       
+    redact("Proxy-Authorization: Basic");                                 
+
+    // Cap length                                                          
+    constexpr size_t kMax = 512;                                          
+    if (out.size() > kMax) {                                              
+        out.resize(kMax);                                                 
+        out += "…";                                                      
+    }                                                                     
+    return out;                                                           
+}  
+
+
+// Create a new logger object for the given client
 Logger::Logger(std::string clientID){
     this->clientID = clientID;
 
@@ -29,14 +72,21 @@ const std::string Logger::getTime(){
 }
 
 void Logger::logRequest(std::string request){
-    std::string log = getTime() + " [" + this->clientID + "]: Request: " + request;
+    //Sanitize the request line before logging
+    const std::string clean = sanitize_http_line(request); 
+
+    std::string log = getTime() + " [" + this->clientID + "]: Request: " + clean; // <- Replace "clean" with "request" if sanitization isnt necessary
     std::cout << log << std::endl; //TODO: For testing, remove for production
     //TODO: Write to log file
     logToFile(log);
 }
 
 void Logger::logResponse(std::string response){
-    std::string log = getTime() + " [" + this->clientID + "]: Response: " + response;
+    // Sanitize the status line before logging
+    const std::string clean = sanitize_http_line(response);
+
+
+    std::string log = getTime() + " [" + this->clientID + "]: Response: " + clean;// <- Replace "clean" with "request" if sanitization isnt necessary
     std::cout << log << std::endl; //TODO: For testing, remove for production
     //TODO: Write to log file
     logToFile(log);
@@ -45,10 +95,11 @@ void Logger::logResponse(std::string response){
 void Logger::logToFile(std::string entry){
     //TODO: Write entry to log file(ex: log.txt). We can do just one log file for everthing,
     //or a log file per clientID (ex: log_client1.txt, log_client2.txt, etc)
+    
+    // Note: Currently writing a log file per clientID.
 
     const std::string logfil = "logs/client_" + this->clientID + ".log"; // Per-client log file
-
-    std::lock_guard<std::mutex> lock(g_log_file_mutex); //Guard concurrent appends.
+    // const std::string logfile = "logs/log.txt"; // Log file for all clinets, uncomment if needed    std::lock_guard<std::mutex> lock(g_log_file_mutex); //Guard concurrent appends.
 
     std::ofstream out(logfile, std::ios::app); //Open in append mode
     if (!out){
