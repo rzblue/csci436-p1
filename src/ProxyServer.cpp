@@ -6,6 +6,7 @@
 #include <sys/select.h>
 #include <algorithm>          
 #include <chrono>  
+#include <cerrno>  
 
 #include "ProxyServer.hpp"
 #include "Protocol.hpp"
@@ -13,11 +14,14 @@
 #include "Logger.hpp"
 
 void ProxyServer::handleRequest(int client_fd) {
+    Logger logger(std::to_string(client_fd)); //Create logger up-front so we can record early errors before connect.
+
     // Read Proxy Header
     Protocol::ProxyHeader header{};
     ssize_t bytes_read = recv(client_fd, &header, sizeof(header), MSG_WAITALL);
     if (bytes_read != sizeof(header)) {
         std::cerr << "[ProxyServer] Invalid or incomplete proxy header\n";
+        logger.logResponse(std::string("ERROR invalid proxy header: bytes_read=") + std::to_string(bytes_read));
         return;
     }
 
@@ -31,6 +35,7 @@ void ProxyServer::handleRequest(int client_fd) {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
         std::cerr << "[ProxyServer] Failed to create server socket\n";
+        logger.logResponse(std::string("ERROR socket(): ") + std::strerror(errno)); 
         return;
     }
 
@@ -44,6 +49,7 @@ void ProxyServer::handleRequest(int client_fd) {
     if (connect(server_fd, (struct sockaddr*)&dest_addr, sizeof(dest_addr)) < 0) {
         std::cerr << "[ProxyServer] Failed to connect to "
                   << dest_ip << ":" << dest_port << "\n";
+        logger.logResponse(std::string("ERROR connect(") + dest_ip + ":" + std::to_string(dest_port) + "): " + std::strerror(errno));  
         close(server_fd);
         return;
     }
@@ -75,7 +81,10 @@ void ProxyServer::handleRequest(int client_fd) {
         // Wait for Activity on Either Socket
         // Block Until Activity is Detected
         // Break Loop on Error
-        if (select(max_fd, &fds, nullptr, nullptr, nullptr) < 0) break;
+        if (select(max_fd, &fds, nullptr, nullptr, nullptr) < 0) {
+            logger.logResponse(std::string("ERROR select(): ") + std::strerror(errno));
+            break;
+        }
 
         // Client → Server
         // Check if Client Socket is Ready for Reading
@@ -83,7 +92,15 @@ void ProxyServer::handleRequest(int client_fd) {
             // Read Data from Client and Forward to Server
             ssize_t n = recv(client_fd, relay_buffer, sizeof(relay_buffer), 0);
             std::cout << "[ProxyServer] Relayed " << n << " bytes from client to server.\n";
-            if (n <= 0) break;
+            if (n <= 0) {
+                if (n < 0) {
+                    logger.logResponse(std::string("ERROR recv(client): ") + std::strerror(errno));
+                } else {
+                    logger.logResponse("INFO client closed connection");
+                }
+                break;
+            }
+                
 
             //Log the first request line once
             if (!logged_request_line) {                                      
@@ -97,7 +114,10 @@ void ProxyServer::handleRequest(int client_fd) {
             }
 
             ssize_t s = send(server_fd, relay_buffer, n, 0);
-            if (s < 0) break;
+            if (s < 0) {
+                logger.logResponse(std::string("ERROR send(server): ") + std::strerror(errno));
+                break;
+            }
             bytes_up += static_cast<std::size_t>(s);   // Count bytes up
         }
 
@@ -107,8 +127,15 @@ void ProxyServer::handleRequest(int client_fd) {
             // Read Data from Server and Forward to Client
             ssize_t n = recv(server_fd, relay_buffer, sizeof(relay_buffer), 0);
             std::cout << "[ProxyServer] Relayed " << n << " bytes from server to client.\n";
-            if (n <= 0) break;
-            
+            if (n <= 0) {
+                if (n < 0) {
+                    logger.logResponse(std::string("ERROR recv(server): ") + std::strerror(errno)); 
+                } else {
+                    logger.logResponse("INFO server closed connection");
+                }
+                break;
+            }
+
             //Log the first status line once
             if (!logged_status_line) {                                      
                 std::string chunk(relay_buffer, relay_buffer + n);           
@@ -121,7 +148,10 @@ void ProxyServer::handleRequest(int client_fd) {
             } 
 
             ssize_t s = send(client_fd, relay_buffer, n, 0);
-            if (s < 0) break;
+            if (s < 0) {
+                logger.logResponse(std::string("ERROR send(client): ") + std::strerror(errno));
+                break;
+            }
             bytes_down += static_cast<std::size_t>(s); // Count bytes down
         }
     }
