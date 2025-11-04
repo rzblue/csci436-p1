@@ -34,58 +34,7 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         return;
     }
 
-    // Handle HTTPS Tunneling (CONNECT)
-    if (request.rfind("CONNECT ", 0) == 0) {
-        int remote_fd = connectToHost(host, port);
-        if (remote_fd < 0) {
-            // Send 502 Bad Gateway if Connection Fails
-            std::string response = "HTTP/1.1 502 Bad Gateway\r\n\r\n";
-            send(client_fd, response.c_str(), response.size(), 0);
-            return;
-        }
-
-        // Acknowledge Tunnel Establishment to the Client
-        std::string response = "HTTP/1.1 200 Connection Established\r\n\r\n";
-        send(client_fd, response.c_str(), response.size(), 0);
-
-        // TODO: Console Logging: Replace or Supplement with Custom Logging Module
-        std::cout << "[HTTPProxyServer] Tunnel established to " << host << ":" << port << "\n";
-
-        // Relay Bytes between the Client and Server (Bidirectional)
-        fd_set fds;
-        char relay_buf[4096];
-        while (true) {
-            FD_ZERO(&fds);
-            FD_SET(client_fd, &fds);
-            FD_SET(remote_fd, &fds);
-            int max_fd = std::max(client_fd, remote_fd) + 1;
-
-            if (select(max_fd, &fds, nullptr, nullptr, nullptr) < 0)
-                break;
-
-            // Client → Server
-            if (FD_ISSET(client_fd, &fds)) {
-                ssize_t n = recv(client_fd, relay_buf, sizeof(relay_buf), 0);
-                if (n <= 0) break;
-                send(remote_fd, relay_buf, n, 0);
-            }
-
-            // Server → Client
-            if (FD_ISSET(remote_fd, &fds)) {
-                ssize_t n = recv(remote_fd, relay_buf, sizeof(relay_buf), 0);
-                if (n <= 0) break;
-                send(client_fd, relay_buf, n, 0);
-            }
-        }
-
-        // TODO: Console Logging: Replace or Supplement with Custom Logging Module
-        std::cout << "[HTTPProxyServer] Tunnel closed for " << host << "\n";
-
-        close(remote_fd);
-        return;
-    }
-
-    // Otherwise, Handle Normal HTTP Request
+    // Connect to the remote server
     int server_fd = connectToHost(host, port);
     if (server_fd < 0) {
         // Send 502 Bad Gateway if Connection Fails
@@ -94,17 +43,52 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         return;
     }
 
-    // Forward the Client's Request to the Remote Host
-    send(server_fd, request.c_str(), request.size(), 0);
+    // Handle HTTPS Tunneling (CONNECT)
+    if (request.rfind("CONNECT ", 0) == 0) {
+        // Acknowledge Tunnel Establishment to the Client
+        std::string response = "HTTP/1.1 200 Connection Established\r\n\r\n";
+        send(client_fd, response.c_str(), response.size(), 0);
 
-    // Relay the Response from the Server Back to the Client
-    ssize_t n;
-    while ((n = recv(server_fd, buffer, sizeof(buffer), 0)) > 0) {
-        send(client_fd, buffer, n, 0);
+        // TODO: Console Logging: Replace or Supplement with Custom Logging Module
+        std::cout << "[HTTPProxyServer] Tunnel established to " << host << ":" << port << "\n";
+    } else {
+        // For normal HTTP Request, we need to forward the original request to the server
+        send(server_fd, request.c_str(), request.size(), 0);
+
+        // TODO: Console Logging: Replace or Supplement with Custom Logging Module
+        std::cout << "[HTTPProxyServer] Forwarded HTTP connection to " << host << ":" << port << "\n";
+    }
+
+    // Relay data bidirectionally between client and server
+    // This handles both HTTPS tunnels and HTTP keep-alive connections
+    fd_set fds;
+    char relay_buf[4096];
+    while (true) {
+        FD_ZERO(&fds);
+        FD_SET(client_fd, &fds);
+        FD_SET(server_fd, &fds);
+        int max_fd = std::max(client_fd, server_fd) + 1;
+
+        if (select(max_fd, &fds, nullptr, nullptr, nullptr) < 0)
+            break;
+
+        // Client → Server
+        if (FD_ISSET(client_fd, &fds)) {
+            ssize_t n = recv(client_fd, relay_buf, sizeof(relay_buf), 0);
+            if (n <= 0) break;
+            send(server_fd, relay_buf, n, 0);
+        }
+
+        // Server → Client
+        if (FD_ISSET(server_fd, &fds)) {
+            ssize_t n = recv(server_fd, relay_buf, sizeof(relay_buf), 0);
+            if (n <= 0) break;
+            send(client_fd, relay_buf, n, 0);
+        }
     }
 
     // TODO: Console Logging: Replace or Supplement with Custom Logging Module
-    std::cout << "[HTTPProxyServer] Finished relaying response from " << host << "\n";
+    std::cout << "[HTTPProxyServer] Connection closed for " << host << "\n";
 
     close(server_fd);
 }
