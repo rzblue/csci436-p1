@@ -1,4 +1,5 @@
 #include "HTTPProxyServer.hpp"
+#include "Logger.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -11,6 +12,7 @@
 
 
 void HTTPProxyServer::handleRequest(int client_fd) {
+    Logger log(std::to_string(client_fd)); //Create logger up-front so we can record early errors before connect.
     // Read the Initial Request from the Client
     char buffer[8192];
     ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
@@ -21,10 +23,10 @@ void HTTPProxyServer::handleRequest(int client_fd) {
     buffer[bytes_read] = '\0';
     std::string request(buffer);
 
-    // TODO: Console Logging: Replace or Supplement with Custom Logging Module
     std::cout << "\n[HTTPProxyServer] Received request:\n"
               << request.substr(0, std::min<size_t>(request.size(), 300))  // limit output
               << (request.size() > 300 ? "...\n" : "\n");
+    log.logRequest(request);
 
     // Parse Destination Host and Port from the Request
     std::string host;
@@ -48,8 +50,8 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         std::string response = "HTTP/1.1 200 Connection Established\r\n\r\n";
         send(client_fd, response.c_str(), response.size(), 0);
 
-        // TODO: Console Logging: Replace or Supplement with Custom Logging Module
         std::cout << "[HTTPProxyServer] Tunnel established to " << host << ":" << port << "\n";
+        log.logTunnelEstablished(host, port);
 
         // Relay Bytes between the Client and Server (Bidirectional)
         fd_set fds;
@@ -78,8 +80,8 @@ void HTTPProxyServer::handleRequest(int client_fd) {
             }
         }
 
-        // TODO: Console Logging: Replace or Supplement with Custom Logging Module
         std::cout << "[HTTPProxyServer] Tunnel closed for " << host << "\n";
+        log.logTunnelClosed(host, port);
 
         close(remote_fd);
         return;
@@ -103,8 +105,8 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         send(client_fd, buffer, n, 0);
     }
 
-    // TODO: Console Logging: Replace or Supplement with Custom Logging Module
     std::cout << "[HTTPProxyServer] Finished relaying response from " << host << "\n";
+    log.logCustomMsg("Finished relaying response from " + host);
 
     close(server_fd);
 }

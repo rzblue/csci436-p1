@@ -92,14 +92,25 @@ void Logger::logResponse(std::string response){
     logToFile(log);
 }
 
+void Logger::logTunnelEstablished(std::string host, int port){
+    logToFile(getTime() + " [" + this->clientID + "]: Tunnel established to" + host + ":" + std::to_string(port));
+}
+void Logger::logTunnelClosed(std::string host, int port){
+    logToFile(getTime() + " [" + this->clientID + "]: Tunnel closed for" + host + ":" + std::to_string(port));
+}
+void Logger::logCustomMsg(std::string entry){
+    logToFile(getTime() + " [" + this->clientID + "]: " + entry);
+}
+
+
 void Logger::logToFile(std::string entry){
     //TODO: Write entry to log file(ex: log.txt). We can do just one log file for everthing,
     //or a log file per clientID (ex: log_client1.txt, log_client2.txt, etc)
     
     // Note: Currently writing a log file per clientID.
 
-    const std::string logfil = "logs/client_" + this->clientID + ".log"; // Per-client log file
-    // const std::string logfile = "logs/log.txt"; // Log file for all clinets, uncomment if needed    std::lock_guard<std::mutex> lock(g_log_file_mutex); //Guard concurrent appends.
+    //const std::string logfil = "logs/client_" + this->clientID + ".log"; // Per-client log file
+    const std::string logfile = "logs/log.txt"; // Log file for all clinets, uncomment if needed    std::lock_guard<std::mutex> lock(g_log_file_mutex); //Guard concurrent appends.
 
     std::ofstream out(logfile, std::ios::app); //Open in append mode
     if (!out){
@@ -108,5 +119,4 @@ void Logger::logToFile(std::string entry){
     }
     out << entry << '\n';
     //std::ofstream flushed on destruction; explicit flush not required.
-    }
 }

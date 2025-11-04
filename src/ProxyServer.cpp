@@ -56,7 +56,7 @@ void ProxyServer::handleRequest(int client_fd) {
     std::cout << "[ProxyServer] Connected to destination.\n";
 
     //Create a per-connection logger using the client_fd as ID
-    Logger logger(std::to_string(client_fd));
+    //Logger logger(std::to_string(client_fd));
     bool logged_request_line = false; //log first request once
     bool logged_status_line  = false; //log first status once
 
