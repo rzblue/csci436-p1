@@ -3,6 +3,7 @@
 #include "FileClient.hpp"
 #include "FileServer.hpp"
 #include "ProxyServer.hpp"
+#include "HTTPProxyServer.hpp"
 
 
 int main(int argc, char* argv[]) {
@@ -10,11 +11,12 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cerr << "Usage:\n";
         std::cerr << "  " << argv[0] << " server <port>\n";
-        std::cerr << "  " << argv[0] << " client <host> <port>\n";
+        std::cerr << "  " << argv[0] << " client <host> <port> [proxy-host] [proxy-port]\n";
+        std::cerr << "  " << argv[0] << " proxy <port>\n";
+        std::cerr << "  " << argv[0] << " http-proxy <port>\n";
         return 1;
     }
 
-    // Determine Mode: Server or Client
     // Server Mode
     if (strcmp(argv[1], "server") == 0) {
         int port = (argc >= 3) ? std::stoi(argv[2]) : 5000;
@@ -67,6 +69,13 @@ int main(int argc, char* argv[]) {
     else if (strcmp(argv[1], "proxy") == 0) {
         int port = (argc >= 3) ? std::stoi(argv[2]) : 5000;
         ProxyServer server(port);
+        server.start();
+    }
+
+    // HTTP Proxy Server Mode
+    else if (strcmp(argv[1], "http-proxy") == 0) {
+        int port = (argc >= 3) ? std::stoi(argv[2]) : 8080;
+        HTTPProxyServer server(port);
         server.start();
     }
 

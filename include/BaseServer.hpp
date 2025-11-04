@@ -16,6 +16,10 @@ protected:
     int server_port;
 
     virtual void handleRequest(int client_fd) = 0;
+
+private:
+    static void* threadEntry(void* arg);
+    void threadHandler(int client_fd);
 };
 
 #endif // BASE_SERVER_HPP

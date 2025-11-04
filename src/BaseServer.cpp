@@ -2,6 +2,7 @@
 #include <cstring>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "BaseServer.hpp"
 
@@ -61,10 +62,17 @@ bool BaseServer::start() {
         }
         std::cout << "Client connected.\n";
 
-        handleRequest(client_fd);
+        // Create a New Thread for Each Client
+        auto* args = new std::pair<BaseServer*, int>(this, client_fd);
+        pthread_t thread_id;
+        if (pthread_create(&thread_id, nullptr, BaseServer::threadEntry, args) != 0) {
+            std::cerr << "Error: Failed to create thread\n";
+            close(client_fd);
+            delete args;
+            continue;
+        }
 
-        close(client_fd);
-        std::cout << "Client disconnected.\n";
+        pthread_detach(thread_id); // Auto-clean threads
     }
 
     return true;
@@ -82,4 +90,22 @@ int BaseServer::acceptConnection() {
         return -1;
     }
     return client_fd;
+}
+
+void* BaseServer::threadEntry(void* arg) {
+    auto* args = reinterpret_cast<std::pair<BaseServer*, int>*>(arg);
+    BaseServer* server = args->first;
+    int client_fd = args->second;
+    delete args;
+
+    server->threadHandler(client_fd);
+
+    pthread_exit(nullptr);
+    return nullptr;
+}
+
+void BaseServer::threadHandler(int client_fd) {
+    handleRequest(client_fd);   // accessible (same class)
+    close(client_fd);
+    std::cout << "Client disconnected.\n";
 }
