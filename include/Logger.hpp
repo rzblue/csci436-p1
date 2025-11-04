@@ -6,8 +6,11 @@ class Logger {
     public:
         Logger(std::string clientID);
         ~Logger();
-        void logRequest(std::string rquest); //Log the request and timestamp
+        void logRequest(std::string request); //Log the request and timestamp
         void logResponse(std::string response); //Log the response and timestamp
+        void logTunnelEstablished(std::string host, int port); //Log tunnel establishment
+        void logTunnelClosed(std::string host, int port); //Log tunnel closure
+        void logCustomMsg(std::string entry); //Log custom message
     private:
         std::string clientID;
         const std::string getTime();
