@@ -16,8 +16,11 @@ void HTTPProxyServer::handleRequest(int client_fd) {
     // Read the Initial Request from the Client
     char buffer[8192];
     ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-    if (bytes_read <= 0) {
-        std::cerr << "[HTTPProxyServer] Failed to read from client\n";
+    if (bytes_read == 0) {
+        std::cerr << "[HTTPProxyServer] Client closed the connection before sending data\n";
+        return;
+    } else if (bytes_read < 0) {
+        std::cerr << "[HTTPProxyServer] Failed to read from client: " << strerror(errno) << "\n";
         return;
     }
     buffer[bytes_read] = '\0';
