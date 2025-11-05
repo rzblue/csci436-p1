@@ -95,8 +95,11 @@ void Logger::logResponse(std::string response){
 void Logger::logTunnelEstablished(std::string host, int port){
     logToFile(getTime() + " [" + this->clientID + "]: Tunnel established to" + host + ":" + std::to_string(port));
 }
-void Logger::logTunnelClosed(std::string host, int port){
-    logToFile(getTime() + " [" + this->clientID + "]: Tunnel closed for" + host + ":" + std::to_string(port));
+void Logger::logConnectionOpened(std::string host, int port){
+    logToFile(getTime() + " [" + this->clientID + "]: Connection opened to " + host + ":" + std::to_string(port));
+}
+void Logger::logConnectionClosed(std::string host, int port){
+    logToFile(getTime() + " [" + this->clientID + "]: Connection closed for " + host + ":" + std::to_string(port));
 }
 void Logger::logCustomMsg(std::string entry){
     logToFile(getTime() + " [" + this->clientID + "]: " + entry);

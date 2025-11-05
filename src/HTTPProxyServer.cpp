@@ -55,12 +55,14 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         send(client_fd, response.c_str(), response.size(), 0);
 
         std::cout << "[HTTPProxyServer] Tunnel established to " << host << ":" << port << "\n";
+        log.logTunnelEstablished(host, port);
     } else {
         // For normal HTTP Request, we need to forward the original request to the server
         send(server_fd, request.c_str(), request.size(), 0);
 
         // TODO: Console Logging: Replace or Supplement with Custom Logging Module
         std::cout << "[HTTPProxyServer] Forwarded HTTP connection to " << host << ":" << port << "\n";
+        log.logConnectionOpened(host, port);
     }
 
     // Relay data bidirectionally between client and server
@@ -91,9 +93,7 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         }
     }
 
-    // TODO: Console Logging: Replace or Supplement with Custom Logging Module
-    std::cout << "[HTTPProxyServer] Connection closed for " << host << "\n";
-
+    log.logConnectionClosed(host, port);
     close(server_fd);
 }
 
