@@ -9,7 +9,8 @@ class Logger {
         void logRequest(std::string request); //Log the request and timestamp
         void logResponse(std::string response); //Log the response and timestamp
         void logTunnelEstablished(std::string host, int port); //Log tunnel establishment
-        void logTunnelClosed(std::string host, int port); //Log tunnel closure
+        void logConnectionOpened(std::string host, int port); //Log connection opening
+        void logConnectionClosed(std::string host, int port); //Log connection closure
         void logCustomMsg(std::string entry); //Log custom message
     private:
         std::string clientID;
