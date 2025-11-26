@@ -5,3 +5,6 @@ CMakeUserPresets.json
 Testing/
 testing/
 logs/
+execution_recording.mp4
+execution_traces.txt
+full_source_listing.txt
