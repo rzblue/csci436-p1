@@ -8,17 +8,15 @@
 #include <netdb.h>
 #include <cstring>
 #include <iostream>
-#include <fstream>
-#include <algorithm>
-#include <cctype>
-#include <sstream>
 
 // ====================================================================================================
 // Constructor
 // ====================================================================================================
-HTTPProxyServer::HTTPProxyServer(int port) : BaseServer(port) {
-    if (!loadForbiddenWords()) {
-        std::cerr << "[HTTPProxyServer] Warning: Could not load forbidden words.\n";
+HTTPProxyServer::HTTPProxyServer(int port, const std::string& forbidden_file) 
+    : BaseServer(port), filter(forbidden_file) {
+    
+    if (filter.isEmpty()) {
+        std::cerr << "[HTTPProxyServer] Warning: No forbidden words loaded.\n";
     }
 }
 
@@ -30,8 +28,7 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         // Read and parse client request
         std::string request = HTTPRequestParser::readRequest(client_fd);
         if (request.empty()) {
-            // Client disconnected
-            return;
+            return;  // Client disconnected
         }
 
         std::cout << "[Proxy] Received " 
@@ -40,7 +37,7 @@ void HTTPProxyServer::handleRequest(int client_fd) {
 
         // Check for forbidden words in request
         std::vector<std::string> matches;
-        if (containsForbiddenWords(request, matches)) {
+        if (filter.containsForbiddenContent(request, matches)) {
             std::cout << "[Proxy] Request blocked (forbidden content)\n";
             sendData(client_fd, ErrorResponseBuilder::build403Forbidden(matches));
             return;
@@ -91,7 +88,7 @@ void HTTPProxyServer::handleRequest(int client_fd) {
 
         // Check for forbidden words in response body
         matches.clear();
-        if (containsForbiddenWords(response.body, matches)) {
+        if (filter.containsForbiddenContent(response.body, matches)) {
             std::cout << "[Proxy] Response blocked (forbidden content)\n";
             sendData(client_fd, ErrorResponseBuilder::build503ServiceUnavailable(matches));
             close(server_fd);
@@ -195,71 +192,6 @@ void HTTPProxyServer::handleConnectTunnel(int client_fd,
 
     close(server_fd);
     std::cout << "[Proxy] Tunnel closed\n";
-}
-
-// ====================================================================================================
-// Forbidden Word Detection
-// ====================================================================================================
-bool HTTPProxyServer::containsForbiddenWords(const std::string& text,
-                                             std::vector<std::string>& matches) const {
-    matches.clear();
-
-    // Convert text to lowercase for case-insensitive matching
-    std::string lower_text = text;
-    std::transform(lower_text.begin(), lower_text.end(), 
-                   lower_text.begin(), ::tolower);
-
-    for (const std::string& word : forbidden_words) {
-        // Convert forbidden word to lowercase
-        std::string lower_word = word;
-        std::transform(lower_word.begin(), lower_word.end(), 
-                       lower_word.begin(), ::tolower);
-
-        if (lower_text.find(lower_word) != std::string::npos) {
-            matches.push_back(word);  // Store original casing
-        }
-    }
-
-    return !matches.empty();
-}
-
-bool HTTPProxyServer::loadForbiddenWords() {
-    forbidden_words.clear();
-
-    std::ifstream file("forbidden.txt");
-    if (!file.is_open()) {
-        std::cerr << "[HTTPProxyServer] Failed to open forbidden.txt\n";
-        return false;
-    }
-
-    std::string line;
-    while (std::getline(file, line)) {
-        // Trim whitespace (including \r from Windows line endings)
-        auto start = line.find_first_not_of(" \t\r\n");
-        auto end = line.find_last_not_of(" \t\r\n");
-
-        if (start == std::string::npos) {
-            continue;  // Empty line
-        }
-
-        std::string word = line.substr(start, end - start + 1);
-
-        // Skip comments
-        if (!word.empty() && word[0] == '#') {
-            continue;
-        }
-
-        if (!word.empty()) {
-            forbidden_words.push_back(word);
-            std::cout << "[Proxy] Loaded forbidden word: '" << word << "'\n";
-        }
-    }
-
-    std::cout << "[HTTPProxyServer] Loaded " 
-              << forbidden_words.size() 
-              << " forbidden words\n";
-
-    return true;
 }
 
 // ====================================================================================================

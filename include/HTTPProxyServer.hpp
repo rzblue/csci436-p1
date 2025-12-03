@@ -1,12 +1,9 @@
-// ============================================================================
-// HTTPProxyServer.hpp - Refactored Version
-// ============================================================================
 #ifndef HTTP_PROXY_SERVER_HPP
 #define HTTP_PROXY_SERVER_HPP
 
 #include "BaseServer.hpp"
+#include "ContentFilter.hpp"
 #include <string>
-#include <vector>
 
 /**
  * HTTPProxyServer - Multi-threaded HTTP/HTTPS proxy with content filtering
@@ -16,14 +13,21 @@
  * - HTTPS tunneling (CONNECT method)
  * - Request and response filtering based on forbidden words
  * - Persistent connections (HTTP/1.1 keep-alive)
+ * 
+ * This class orchestrates the proxy workflow by delegating to specialized components:
+ * - HTTPRequestParser: Parses incoming HTTP requests
+ * - HTTPResponseParser: Parses server HTTP responses
+ * - ContentFilter: Checks for forbidden content
+ * - ErrorResponseBuilder: Generates error pages
  */
 class HTTPProxyServer : public BaseServer {
 public:
     /**
      * Constructor
      * @param port Port to listen on
+     * @param forbidden_file Path to forbidden words file (default: "forbidden.txt")
      */
-    explicit HTTPProxyServer(int port);
+    explicit HTTPProxyServer(int port, const std::string& forbidden_file = "forbidden.txt");
 
 protected:
     /**
@@ -35,28 +39,13 @@ protected:
     void handleRequest(int client_fd) override;
 
 private:
-    // === Forbidden Word Management ===
-    std::vector<std::string> forbidden_words;
-    
-    /**
-     * Load forbidden words from file
-     * @return true on success, false on failure
-     */
-    bool loadForbiddenWords();
-    
-    /**
-     * Check if text contains forbidden words
-     * @param text Text to check
-     * @param matches Output vector of matched words
-     * @return true if forbidden words found
-     */
-    bool containsForbiddenWords(const std::string& text, 
-                                std::vector<std::string>& matches) const;
+    // Content filtering component    
+    ContentFilter filter;
 
-    // === HTTPS Tunnel Handling ===
-    
     /**
      * Handle CONNECT request (HTTPS tunnel)
+     * Establishes a bidirectional tunnel between client and server
+     * 
      * @param client_fd Client socket
      * @param host Destination host
      * @param port Destination port
@@ -65,10 +54,9 @@ private:
                              const std::string& host, 
                              int port);
 
-    // === Networking Utilities ===
-    
     /**
      * Connect to a remote host
+     * 
      * @param host Hostname or IP address
      * @param port Port number
      * @return Socket file descriptor, or -1 on failure
@@ -77,6 +65,7 @@ private:
     
     /**
      * Send data to socket with error checking
+     * 
      * @param fd Socket file descriptor
      * @param data Data to send
      * @return true on success, false on failure
