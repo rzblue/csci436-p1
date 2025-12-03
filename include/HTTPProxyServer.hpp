@@ -1,3 +1,6 @@
+// ============================================================================
+// HTTPProxyServer.hpp - Refactored Version
+// ============================================================================
 #ifndef HTTP_PROXY_SERVER_HPP
 #define HTTP_PROXY_SERVER_HPP
 
@@ -61,22 +64,6 @@ private:
     void handleConnectTunnel(int client_fd, 
                              const std::string& host, 
                              int port);
-
-    // === Error Response Generation ===
-    
-    /**
-     * Generate 403 Forbidden response
-     * @param matches List of forbidden words that were matched
-     * @return Complete HTTP response
-     */
-    std::string make403Response(const std::vector<std::string>& matches) const;
-    
-    /**
-     * Generate 503 Service Unavailable response
-     * @param matches List of forbidden words that were matched
-     * @return Complete HTTP response
-     */
-    std::string make503Response(const std::vector<std::string>& matches) const;
 
     // === Networking Utilities ===
     

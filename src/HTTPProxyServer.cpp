@@ -1,6 +1,7 @@
 #include "HTTPProxyServer.hpp"
 #include "HTTPRequestParser.hpp"
 #include "HTTPResponseParser.hpp"
+#include "ErrorResponseBuilder.hpp"
 
 #include <unistd.h>
 #include <sys/socket.h>
@@ -22,13 +23,11 @@ HTTPProxyServer::HTTPProxyServer(int port) : BaseServer(port) {
 }
 
 // ====================================================================================================
-// Main Request Handler - SIMPLIFIED with new parsers
+// Main Request Handler
 // ====================================================================================================
 void HTTPProxyServer::handleRequest(int client_fd) {
     while (true) {
-        // -------------------------------------------------------
-        // STEP 1: Read and parse client request
-        // -------------------------------------------------------
+        // Read and parse client request
         std::string request = HTTPRequestParser::readRequest(client_fd);
         if (request.empty()) {
             // Client disconnected
@@ -39,57 +38,47 @@ void HTTPProxyServer::handleRequest(int client_fd) {
                   << HTTPRequestParser::getMethod(request) 
                   << " request\n";
 
-        // -------------------------------------------------------
-        // STEP 2: Check for forbidden words in request
-        // -------------------------------------------------------
+        // Check for forbidden words in request
         std::vector<std::string> matches;
         if (containsForbiddenWords(request, matches)) {
             std::cout << "[Proxy] Request blocked (forbidden content)\n";
-            sendData(client_fd, make403Response(matches));
+            sendData(client_fd, ErrorResponseBuilder::build403Forbidden(matches));
             return;
         }
 
-        // -------------------------------------------------------
-        // STEP 3: Parse destination host and port
-        // -------------------------------------------------------
+        // Parse destination host and port
         auto dest = HTTPRequestParser::parseDestination(request);
         if (!dest.valid) {
             std::cerr << "[Proxy] Could not parse destination\n";
+            sendData(client_fd, ErrorResponseBuilder::build400BadRequest("Invalid destination"));
             return;
         }
 
         std::cout << "[Proxy] Destination: " << dest.host << ":" << dest.port << "\n";
 
-        // -------------------------------------------------------
-        // STEP 4: Handle CONNECT method (HTTPS tunnel)
-        // -------------------------------------------------------
+        // Handle CONNECT method (HTTPS tunnel)
         if (HTTPRequestParser::isConnectRequest(request)) {
             handleConnectTunnel(client_fd, dest.host, dest.port);
             return;
         }
 
-        // -------------------------------------------------------
-        // STEP 5: Connect to destination server
-        // -------------------------------------------------------
+        // Connect to destination server
         int server_fd = connectToHost(dest.host, dest.port);
         if (server_fd < 0) {
             std::cerr << "[Proxy] Failed to connect to " << dest.host << "\n";
-            sendData(client_fd, "HTTP/1.1 502 Bad Gateway\r\n\r\n");
+            sendData(client_fd, ErrorResponseBuilder::build502BadGateway(
+                "Could not connect to " + dest.host));
             return;
         }
 
-        // -------------------------------------------------------
-        // STEP 6: Forward request to server
-        // -------------------------------------------------------
+        // Forward request to server
         if (!sendData(server_fd, request)) {
             std::cerr << "[Proxy] Failed to send request to server\n";
             close(server_fd);
             return;
         }
 
-        // -------------------------------------------------------
-        // STEP 7: Read and parse server response
-        // -------------------------------------------------------
+        // Read and parse server response
         auto response = HTTPResponseParser::readResponse(server_fd);
         
         if (!response.valid || response.full.empty()) {
@@ -100,20 +89,16 @@ void HTTPProxyServer::handleRequest(int client_fd) {
 
         std::cout << "[Proxy] Response status: " << response.status_code << "\n";
 
-        // -------------------------------------------------------
-        // STEP 8: Check for forbidden words in response body
-        // -------------------------------------------------------
+        // Check for forbidden words in response body
         matches.clear();
         if (containsForbiddenWords(response.body, matches)) {
             std::cout << "[Proxy] Response blocked (forbidden content)\n";
-            sendData(client_fd, make503Response(matches));
+            sendData(client_fd, ErrorResponseBuilder::build503ServiceUnavailable(matches));
             close(server_fd);
             return;
         }
 
-        // -------------------------------------------------------
-        // STEP 9: Forward clean response to client
-        // -------------------------------------------------------
+        // Forward clean response to client
         if (!sendData(client_fd, response.full)) {
             std::cerr << "[Proxy] Failed to send response to client\n";
             close(server_fd);
@@ -122,9 +107,7 @@ void HTTPProxyServer::handleRequest(int client_fd) {
 
         std::cout << "[Proxy] Response forwarded successfully\n";
 
-        // -------------------------------------------------------
-        // STEP 10: Determine if connection should persist
-        // -------------------------------------------------------
+        // Determine if connection should persist
         bool request_keep_alive = HTTPRequestParser::shouldKeepAlive(request);
         bool response_keep_alive = HTTPResponseParser::shouldKeepAlive(response.headers);
 
@@ -152,7 +135,8 @@ void HTTPProxyServer::handleConnectTunnel(int client_fd,
     int server_fd = connectToHost(host, port);
     if (server_fd < 0) {
         std::cerr << "[Proxy] Tunnel connection failed\n";
-        sendData(client_fd, "HTTP/1.1 502 Bad Gateway\r\n\r\n");
+        sendData(client_fd, ErrorResponseBuilder::build502BadGateway(
+            "Could not establish tunnel to " + host));
         return;
     }
 
@@ -276,109 +260,6 @@ bool HTTPProxyServer::loadForbiddenWords() {
               << " forbidden words\n";
 
     return true;
-}
-
-// ====================================================================================================
-// Error Response Generation
-// ====================================================================================================
-std::string HTTPProxyServer::make403Response(const std::vector<std::string>& matches) const {
-    std::ostringstream html;
-    html << "<!DOCTYPE html>\n"
-         << "<html>\n"
-         << "<head>\n"
-         << "  <title>403 Forbidden - Content Blocked</title>\n"
-         << "  <style>\n"
-         << "    body { font-family: Arial, sans-serif; margin: 40px; background-color: #f5f5f5; }\n"
-         << "    .container { background-color: white; padding: 30px; border-radius: 8px; "
-         << "box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }\n"
-         << "    h1 { color: #d32f2f; }\n"
-         << "    .error-code { font-size: 48px; font-weight: bold; color: #d32f2f; }\n"
-         << "    ul { background-color: #ffebee; padding: 15px; border-left: 4px solid #d32f2f; }\n"
-         << "  </style>\n"
-         << "</head>\n"
-         << "<body>\n"
-         << "  <div class=\"container\">\n"
-         << "    <div class=\"error-code\">403</div>\n"
-         << "    <h1>Request Blocked</h1>\n"
-         << "    <p>Your request was blocked because it contained forbidden content.</p>\n"
-         << "    <p><strong>Forbidden terms found:</strong></p>\n"
-         << "    <ul>\n";
-
-    for (const auto& word : matches) {
-        html << "      <li><strong>" << word << "</strong></li>\n";
-    }
-
-    html << "    </ul>\n"
-         << "    <p style=\"color: #666; font-size: 14px; margin-top: 30px;\">"
-         << "If you believe this is an error, please contact your network administrator.</p>\n"
-         << "  </div>\n"
-         << "</body>\n"
-         << "</html>";
-
-    std::string body = html.str();
-
-    std::ostringstream response;
-    response << "HTTP/1.1 403 Forbidden\r\n"
-             << "Content-Type: text/html; charset=UTF-8\r\n"
-             << "Content-Length: " << body.size() << "\r\n"
-             << "Connection: close\r\n"
-             << "Cache-Control: no-cache, no-store, must-revalidate\r\n"
-             << "Pragma: no-cache\r\n"
-             << "Expires: 0\r\n"
-             << "\r\n"
-             << body;
-
-    return response.str();
-}
-
-std::string HTTPProxyServer::make503Response(const std::vector<std::string>& matches) const {
-    std::ostringstream html;
-    html << "<!DOCTYPE html>\n"
-         << "<html>\n"
-         << "<head>\n"
-         << "  <title>503 Service Unavailable - Content Blocked</title>\n"
-         << "  <style>\n"
-         << "    body { font-family: Arial, sans-serif; margin: 40px; background-color: #f5f5f5; }\n"
-         << "    .container { background-color: white; padding: 30px; border-radius: 8px; "
-         << "box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }\n"
-         << "    h1 { color: #f57c00; }\n"
-         << "    .error-code { font-size: 48px; font-weight: bold; color: #f57c00; }\n"
-         << "    ul { background-color: #fff3e0; padding: 15px; border-left: 4px solid #f57c00; }\n"
-         << "  </style>\n"
-         << "</head>\n"
-         << "<body>\n"
-         << "  <div class=\"container\">\n"
-         << "    <div class=\"error-code\">503</div>\n"
-         << "    <h1>Response Blocked</h1>\n"
-         << "    <p>The server's response was blocked because it contained forbidden content.</p>\n"
-         << "    <p><strong>Forbidden terms found:</strong></p>\n"
-         << "    <ul>\n";
-
-    for (const auto& word : matches) {
-        html << "      <li><strong>" << word << "</strong></li>\n";
-    }
-
-    html << "    </ul>\n"
-         << "    <p style=\"color: #666; font-size: 14px; margin-top: 30px;\">"
-         << "If you believe this is an error, please contact your network administrator.</p>\n"
-         << "  </div>\n"
-         << "</body>\n"
-         << "</html>";
-
-    std::string body = html.str();
-
-    std::ostringstream response;
-    response << "HTTP/1.1 503 Service Unavailable\r\n"
-             << "Content-Type: text/html; charset=UTF-8\r\n"
-             << "Content-Length: " << body.size() << "\r\n"
-             << "Connection: close\r\n"
-             << "Cache-Control: no-cache, no-store, must-revalidate\r\n"
-             << "Pragma: no-cache\r\n"
-             << "Expires: 0\r\n"
-             << "\r\n"
-             << body;
-
-    return response.str();
 }
 
 // ====================================================================================================
