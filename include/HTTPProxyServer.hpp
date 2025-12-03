@@ -5,42 +5,96 @@
 #include <string>
 #include <vector>
 
+/**
+ * HTTPProxyServer - Multi-threaded HTTP/HTTPS proxy with content filtering
+ * 
+ * Features:
+ * - HTTP proxying (GET, POST, etc.)
+ * - HTTPS tunneling (CONNECT method)
+ * - Request and response filtering based on forbidden words
+ * - Persistent connections (HTTP/1.1 keep-alive)
+ */
 class HTTPProxyServer : public BaseServer {
 public:
-    using BaseServer::BaseServer;   // inherit constructor
+    /**
+     * Constructor
+     * @param port Port to listen on
+     */
+    explicit HTTPProxyServer(int port);
 
 protected:
+    /**
+     * Handle a client connection
+     * This is called by BaseServer for each accepted connection
+     * 
+     * @param client_fd Client socket file descriptor
+     */
     void handleRequest(int client_fd) override;
 
 private:
-    // === Request Handling ===
-    std::string readHttpRequest(int client_fd);
-    bool containsForbiddenWords(const std::string& data, 
+    // === Forbidden Word Management ===
+    std::vector<std::string> forbidden_words;
+    
+    /**
+     * Load forbidden words from file
+     * @return true on success, false on failure
+     */
+    bool loadForbiddenWords();
+    
+    /**
+     * Check if text contains forbidden words
+     * @param text Text to check
+     * @param matches Output vector of matched words
+     * @return true if forbidden words found
+     */
+    bool containsForbiddenWords(const std::string& text, 
                                 std::vector<std::string>& matches) const;
 
+    // === HTTPS Tunnel Handling ===
+    
+    /**
+     * Handle CONNECT request (HTTPS tunnel)
+     * @param client_fd Client socket
+     * @param host Destination host
+     * @param port Destination port
+     */
+    void handleConnectTunnel(int client_fd, 
+                             const std::string& host, 
+                             int port);
 
-    // === Response Handling ===
-    std::string readHttpResponse(int server_fd);
-    std::string readHttpHeaders(int fd);
-    std::string readFixedLengthBody(int fd, size_t length);
-    std::string readChunkedBody(int fd);
-
-    bool isChunked(const std::string& headers) const;
-    size_t parseContentLength(const std::string& headers) const;
-
-    // === Error Responses ===
+    // === Error Response Generation ===
+    
+    /**
+     * Generate 403 Forbidden response
+     * @param matches List of forbidden words that were matched
+     * @return Complete HTTP response
+     */
     std::string make403Response(const std::vector<std::string>& matches) const;
+    
+    /**
+     * Generate 503 Service Unavailable response
+     * @param matches List of forbidden words that were matched
+     * @return Complete HTTP response
+     */
     std::string make503Response(const std::vector<std::string>& matches) const;
 
-    // === Networking ===
+    // === Networking Utilities ===
+    
+    /**
+     * Connect to a remote host
+     * @param host Hostname or IP address
+     * @param port Port number
+     * @return Socket file descriptor, or -1 on failure
+     */
     int connectToHost(const std::string& host, int port);
-    bool parseHttpDestination(const std::string& request,
-                              std::string& out_host,
-                              int& out_port);
-
-    // === Forbidden List ===
-    bool loadForbiddenWords();
-    std::vector<std::string> forbidden_words;
+    
+    /**
+     * Send data to socket with error checking
+     * @param fd Socket file descriptor
+     * @param data Data to send
+     * @return true on success, false on failure
+     */
+    bool sendData(int fd, const std::string& data);
 };
 
 #endif // HTTP_PROXY_SERVER_HPP
