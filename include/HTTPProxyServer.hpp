@@ -14,11 +14,15 @@
  * - Request and response filtering based on forbidden words
  * - Persistent connections (HTTP/1.1 keep-alive)
  * 
+ * Architecture:
  * This class orchestrates the proxy workflow by delegating to specialized components:
  * - HTTPRequestParser: Parses incoming HTTP requests
  * - HTTPResponseParser: Parses server HTTP responses
  * - ContentFilter: Checks for forbidden content
  * - ErrorResponseBuilder: Generates error pages
+ * - HTTPSTunnel: Handles HTTPS CONNECT tunneling
+ * 
+ * The result is a clean, maintainable orchestration layer with single responsibility.
  */
 class HTTPProxyServer : public BaseServer {
 public:
@@ -39,21 +43,10 @@ protected:
     void handleRequest(int client_fd) override;
 
 private:
-    // Content filtering component    
-    ContentFilter filter;
+    ContentFilter filter;  // Content filtering component
 
-    /**
-     * Handle CONNECT request (HTTPS tunnel)
-     * Establishes a bidirectional tunnel between client and server
-     * 
-     * @param client_fd Client socket
-     * @param host Destination host
-     * @param port Destination port
-     */
-    void handleConnectTunnel(int client_fd, 
-                             const std::string& host, 
-                             int port);
-
+    // === Networking Utilities ===
+    
     /**
      * Connect to a remote host
      * 
