@@ -41,7 +41,9 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         // -------------------------------------------------------
         std::vector<std::string> matches;
         if (filter.containsForbiddenContent(request, matches)) {
-            std::cout << "[Proxy] Request blocked (forbidden content)\n";
+            std::cout << "[HTTPProxyServer] Request blocked (forbidden content: ";
+            for (auto i : matches) std::cout << i << ", ";
+            std::cout << ")\n";
             NetworkUtils::sendData(client_fd, ErrorResponseBuilder::build403Forbidden(matches));
             return;
         }
@@ -112,7 +114,9 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         // -------------------------------------------------------
         matches.clear();
         if (filter.containsForbiddenContent(response.body, matches)) {
-            std::cout << "[Proxy] Response blocked (forbidden content)\n";
+            std::cout << "[HTTPProxyServer] Response blocked (forbidden content: ";
+            for (auto i : matches) std::cout << i << ", ";
+            std::cout << ")\n";
             NetworkUtils::sendData(client_fd, ErrorResponseBuilder::build503ServiceUnavailable(matches));
             close(server_fd);
             return;
