@@ -1,0 +1,4 @@
+wikipedia.org
+lincoln
+debian
+ftp.debian.org
