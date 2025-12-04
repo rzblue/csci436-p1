@@ -1,8 +1,11 @@
 #include "ContentFilter.hpp"
 #include <fstream>
-#include <algorithm>
 #include <cctype>
 #include <iostream>
+
+#include "StringUtils.hpp"
+
+using namespace utils;
 
 // ====================================================================================================
 // Constructor
@@ -79,13 +82,6 @@ bool ContentFilter::containsForbiddenContent(const std::string& content,
 // ====================================================================================================
 // Private Helper Methods
 // ====================================================================================================
-
-std::string ContentFilter::toLower(const std::string& str) {
-    std::string result = str;
-    std::transform(result.begin(), result.end(), result.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    return result;
-}
 
 std::string ContentFilter::trim(const std::string& str) {
     // Find first non-whitespace character

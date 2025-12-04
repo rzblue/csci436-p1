@@ -109,11 +109,6 @@ private:
     // Buffered reading helpers for chunked encoding
     static bool readLine(int fd, std::string& buffer, std::string& line);
     static std::string readExactFromBuffer(int fd, std::string& buffer, size_t n);
-
-    /**
-     * Helper: Convert string to lowercase
-     */
-    static std::string toLower(const std::string& str);
 };
 
 #endif // HTTP_RESPONSE_PARSER_HPP

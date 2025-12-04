@@ -68,13 +68,6 @@ private:
     std::vector<std::string> forbidden_words;
 
     /**
-     * Convert string to lowercase
-     * @param str Input string
-     * @return Lowercase version of string
-     */
-    static std::string toLower(const std::string& str);
-
-    /**
      * Trim whitespace from both ends of string
      * @param str Input string
      * @return Trimmed string

@@ -81,16 +81,21 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         }
 
         // -------------------------------------------------------
-        // STEP 6: Forward request to server
+        // STEP 6: Remove Accept-Encoding header to prevent compressed responses
         // -------------------------------------------------------
-        if (!NetworkUtils::sendData(server_fd, request)) {
+        std::string modified_request = HTTPRequestParser::removeHeader(request, "Accept-Encoding");
+
+        // -------------------------------------------------------
+        // STEP 7: Forward request to server
+        // -------------------------------------------------------
+        if (!NetworkUtils::sendData(server_fd, modified_request)) {
             std::cerr << "[Proxy] Failed to send request to server\n";
             close(server_fd);
             return;
         }
 
         // -------------------------------------------------------
-        // STEP 7: Read and parse server response
+        // STEP 8: Read and parse server response
         // -------------------------------------------------------
         auto response = HTTPResponseParser::readResponse(server_fd);
         
@@ -103,7 +108,7 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         std::cout << "[Proxy] Response status: " << response.status_code << "\n";
 
         // -------------------------------------------------------
-        // STEP 8: Check for forbidden words in response body
+        // STEP 9: Check for forbidden words in response body
         // -------------------------------------------------------
         matches.clear();
         if (filter.containsForbiddenContent(response.body, matches)) {
@@ -114,7 +119,7 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         }
 
         // -------------------------------------------------------
-        // STEP 9: Forward clean response to client
+        // STEP 10: Forward clean response to client
         // -------------------------------------------------------
         if (!NetworkUtils::sendData(client_fd, response.full)) {
             std::cerr << "[Proxy] Failed to send response to client\n";
@@ -125,7 +130,7 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         std::cout << "[Proxy] Response forwarded successfully\n";
 
         // -------------------------------------------------------
-        // STEP 10: Determine if connection should persist
+        // STEP 11: Determine if connection should persist
         // -------------------------------------------------------
         bool request_keep_alive = HTTPRequestParser::shouldKeepAlive(request);
         bool response_keep_alive = HTTPResponseParser::shouldKeepAlive(response.headers);

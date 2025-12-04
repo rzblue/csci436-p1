@@ -4,6 +4,9 @@
 #include <cctype>
 #include <iostream>
 #include <sstream>
+#include "StringUtils.hpp"
+
+using namespace utils;
 
 // ============================================================================
 // Public Methods
@@ -326,12 +329,5 @@ std::string HTTPResponseParser::readExactFromBuffer(int fd, std::string& buffer,
         remaining -= bytes;
     }
 
-    return result;
-}
-
-std::string HTTPResponseParser::toLower(const std::string& str) {
-    std::string result = str;
-    std::transform(result.begin(), result.end(), result.begin(), 
-                   [](unsigned char c) { return std::tolower(c); });
     return result;
 }
