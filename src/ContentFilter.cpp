@@ -28,11 +28,8 @@ bool ContentFilter::loadFromFile(const std::string& filename) {
     }
 
     std::string line;
-    int line_number = 0;
 
     while (std::getline(file, line)) {
-        line_number++;
-
         // Trim whitespace
         std::string word = trim(line);
 
