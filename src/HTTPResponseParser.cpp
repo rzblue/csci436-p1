@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include "StringUtils.hpp"
+#include "HTTPUtils.hpp"
 
 using namespace utils;
 
@@ -38,6 +39,9 @@ HTTPResponseParser::ParsedResponse HTTPResponseParser::readResponse(int server_f
     // Case A: Chunked Transfer-Encoding
     if (isChunked(response.headers)) {
         response.body = readChunkedBody(server_fd, overflow);
+        // Body contains contents of the full response, replace Transfer-Encoding with Content-Length
+        response.headers = http_utils::removeHeader(response.headers, "Transfer-Encoding");
+        response.headers = http_utils::insertHeader(response.headers, "Content-Length", std::to_string(response.body.size()));
         response.full = response.headers + response.body;
         response.valid = true;
         return response;

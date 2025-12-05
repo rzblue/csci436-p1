@@ -78,15 +78,6 @@ public:
      */
     static bool shouldKeepAlive(const std::string& request);
 
-    /**
-    * Remove a specific header from an HTTP request
-    *
-    * @param request HTTP request string
-    * @param header_name Name of header to remove (case-insensitive)
-    * @return Modified request with header removed
-    */
-    static std::string removeHeader(std::string_view headers, std::string_view header_name);
-
 private:
     /**
      * Helper: Read until we have complete headers (ending with \r\n\r\n)

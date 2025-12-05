@@ -159,57 +159,6 @@ bool HTTPRequestParser::shouldKeepAlive(const std::string& request) {
     return (lower_conn != "close");
 }
 
-std::string HTTPRequestParser::removeHeader(const std::string_view request,
-                                             const std::string_view header_name) {
-    // Create lowercase versions for case-insensitive search
-    std::string lower_request = toLower(request);
-    std::string lower_name = toLower(header_name);
-    
-    // Find header line
-    std::string search_key = lower_name + ":";
-    size_t pos = lower_request.find(search_key);
-    
-    if (pos == std::string::npos) {
-        // Header not found, return original request
-        return std::string{request};
-    }
-
-    // Find the start of the header line (beginning of line)
-    size_t line_start = pos;
-    if (pos > 0) {
-        // Check if header is at the start of headers or after \r\n
-        if (pos >= 2 && request[pos-2] == '\r' && request[pos-1] == '\n') {
-            line_start = pos;
-        } else if (pos >= 1 && request[pos-1] == '\n') {
-            line_start = pos;
-        } else {
-            // Search backwards for the start of line
-            line_start = request.rfind("\n", pos);
-            if (line_start != std::string::npos) {
-                line_start++;  // Move past the \n
-            } else {
-                line_start = 0;  // Header is on first line
-            }
-        }
-    }
-
-    // Find end of header line (including \r\n)
-    size_t line_end = request.find("\r\n", pos);
-    if (line_end == std::string::npos) {
-        // Malformed request, return original
-        return std::string{request};
-    }
-    line_end += 2;  // Include the \r\n
-
-    // Remove the header line
-    std::string result;
-    result.reserve(line_start + (request.length() - line_end));
-    result.append(request.substr(0, line_start));
-    result.append(request.substr(line_end));
-
-    return result;
-}
-
 // ============================================================================
 // Private Helper Methods
 // ============================================================================

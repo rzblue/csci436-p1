@@ -4,6 +4,7 @@
 #include "ErrorResponseBuilder.hpp"
 #include "HTTPSTunnel.hpp"
 #include "NetworkUtils.hpp"
+#include "HTTPUtils.hpp"
 
 #include <unistd.h>
 #include <iostream>
@@ -85,7 +86,7 @@ void HTTPProxyServer::handleRequest(int client_fd) {
         // -------------------------------------------------------
         // STEP 6: Remove Accept-Encoding header to prevent compressed responses
         // -------------------------------------------------------
-        std::string modified_request = HTTPRequestParser::removeHeader(request, "Accept-Encoding");
+        std::string modified_request = http_utils::removeHeader(request, "Accept-Encoding");
 
         // -------------------------------------------------------
         // STEP 7: Forward request to server
