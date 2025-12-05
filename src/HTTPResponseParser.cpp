@@ -241,9 +241,11 @@ std::string HTTPResponseParser::readChunkedBody(int fd, std::string& buffer) {
 
         // Step 3: Check for last chunk (size = 0)
         if (chunk_size == 0) {
-            // Read final CRLF and any trailers
-            std::string trailing;
-            readLine(fd, buffer, trailing);
+            // Read and discard any trailer headers until empty line
+            std::string trailer_line;
+            while (readLine(fd, buffer, trailer_line) && !trailer_line.empty()) {
+                // Trailer headers are discarded (could be parsed if needed)
+            }
             return body;
         }
 
